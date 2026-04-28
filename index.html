@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#2D6A4F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<title>旅行手账</title>
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #1a1a2e;
+    background: #f5f7f6;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+    overflow-x: hidden;
+  }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  input, textarea, select, button { font-size: inherit; font-family: inherit; }
+  button { cursor: pointer; border: none; background: none; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ===== Theme Variables ===== */
+  :root {
+    --color-primary: #2D6A4F;
+    --color-primary-light: #40916C;
+    --color-primary-rgb: 45, 106, 79;
+  }
+
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* ===== Utility ===== */
+  .text-center { text-align: center; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .flex-center { display: flex; align-items: center; justify-content: center; }
+  .gap-8 { gap: 8px; }
+
+  /* ===== Safe Area ===== */
+  .safe-area-bottom {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* ===== App Shell ===== */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    background: #f5f7f6;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ===== Header ===== */
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    background: var(--color-primary);
+    color: #fff;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .app-header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .trip-selector {
+    flex: 1;
+    position: relative;
+  }
+  .trip-selector select {
+    width: 100%;
+    padding: 6px 28px 6px 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 14px;
+    appearance: none;
+    outline: none;
+    cursor: pointer;
+  }
+  .trip-selector select option {
+    color: #1a1a2e;
+    background: #fff;
+  }
+  .trip-selector::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #fff;
+    pointer-events: none;
+  }
+  .header-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 20px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .header-btn:active { background: rgba(255,255,255,0.35); }
+
+  /* ===== Page Content ===== */
+  .page-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    padding-bottom: 8px;
+  }
+
+  /* ===== Bottom Tab ===== */
+  .tab-bar {
+    display: flex;
+    background: #fff;
+    border-top: 1px solid #e8eceb;
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0 4px;
+    font-size: 11px;
+    color: #999;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-item.active { color: var(--color-primary); }
+  .tab-item .tab-icon {
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 1px;
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ===== Summary Card ===== */
+  .summary-card {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+    color: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .summary-card .label {
+    font-size: 13px;
+    opacity: 0.9;
+  }
+  .summary-card .amount {
+    font-size: 28px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  /* ===== Empty State ===== */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: #aaa;
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: opacity 0.2s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+  }
+  .btn-danger {
+    background: #e74c3c;
+    color: #fff;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+  }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+  .btn-block { width: 100%; }
+  .btn-ghost { color: #666; padding: 6px 10px; }
+
+  /* ===== List Items ===== */
+  .list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .list-item .body { flex: 1; min-width: 0; }
+  .list-item .body .title { font-weight: 500; font-size: 14px; }
+  .list-item .body .sub { font-size: 12px; color: #999; margin-top: 2px; }
+  .list-item .body .desc { font-size: 13px; color: #555; margin-top: 4px; white-space: pre-line; }
+  .list-item .right { text-align: right; flex-shrink: 0; }
+  .list-item .right .amount {
+    font-weight: 600; font-size: 15px; color: var(--color-primary);
+  }
+  .list-item .right .meta { font-size: 11px; color: #bbb; margin-top: 2px; }
+  .list-item .delete-btn {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    color: #ccc;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .list-item .delete-btn:active { color: #e74c3c; }
+
+  /* ===== Chip Selector ===== */
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #555;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip.active {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+  }
+
+  /* ===== Form ===== */
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-control:focus { border-color: var(--color-primary); }
+  textarea.form-control {
+    resize: none;
+    min-height: 80px;
+  }
+  select.form-control { appearance: auto; }
+  .form-hint { font-size: 12px; color: #bbb; margin-top: 4px; }
+
+  /* ===== Bottom Sheet Overlay ===== */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: fadeIn 0.2s;
+  }
+  .overlay .sheet {
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+    animation: slideUp 0.25s ease-out;
+  }
+  .sheet .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .sheet .sheet-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .sheet .sheet-close {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: #f0f0f0;
+    font-size: 18px;
+    color: #666;
+  }
+
+  /* ===== Confirm Dialog ===== */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s;
+  }
+  .dialog-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 24px;
+    width: 280px;
+    text-align: center;
+    animation: scaleIn 0.2s;
+  }
+  .dialog-box p {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 20px;
+  }
+  .dialog-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .dialog-actions .btn { flex: 1; }
+
+  /* ===== Trip Modal ===== */
+  .trip-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* ===== v-cloak: hide raw {{ }} before Vue mounts ===== */
+  [v-cloak] { display: none !important; }
+
+  /* ===== Teleported overlays (on body) ===== */
+  .overlay, .dialog-overlay, .toast {
+    /* These will be teleported to body, so position relative to viewport */
+  }
+
+  /* ===== Animations ===== */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* ===== Timeline ===== */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: #e0e0e0;
+    border-radius: 1px;
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 16px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 6px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 2px solid #f5f7f6;
+  }
+  .timeline-item .tl-date {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+  }
+
+  /* ===== Swipe Container ===== */
+  .swipe-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .swipe-wrap .swipe-delete-bg {
+    position: absolute;
+    top: 0; right: 0;
+    height: 100%;
+    width: 80px;
+    background: #e74c3c;
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .swipe-wrap .swipe-delete-bg.active {
+    pointer-events: auto;
+  }
+  .swipe-wrap .swipe-content {
+    position: relative;
+    background: #fff;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: transform 0.25s ease-out;
+    z-index: 1;
+    touch-action: pan-y;
+    user-select: none;
+  }
+  .swipe-wrap .swipe-content.swiped {
+    transform: translateX(-80px);
+    transition: transform 0.2s ease-out;
+  }
+  .swipe-wrap .swipe-content .tl-location {
+    font-size: 12px;
+    color: var(--color-primary);
+    margin-bottom: 4px;
+  }
+  .swipe-wrap .swipe-content .tl-content {
+    font-size: 14px;
+    color: #333;
+    white-space: pre-line;
+  }
+  .swipe-wrap .swipe-content .tl-edit-btn {
+    margin-top: 8px;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: #888;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .swipe-wrap .swipe-content .tl-edit-btn:active {
+    color: var(--color-primary);
+  }
+
+  /* ===== Stats ===== */
+  .chart-container {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto 16px;
+  }
+  .stats-table { width: 100%; font-size: 13px; }
+  .stats-table th {
+    text-align: left;
+    padding: 8px 4px;
+    color: #999;
+    font-weight: 500;
+    border-bottom: 1px solid #eee;
+  }
+  .stats-table td {
+    padding: 8px 4px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .stats-table td:last-child, .stats-table th:last-child { text-align: right; }
+  .stats-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: #e8eceb;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .stats-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  /* ===== Settings ===== */
+  .settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-item .label { font-size: 14px; }
+  .settings-item .desc { font-size: 12px; color: #999; margin-top: 2px; }
+  .file-input-wrap { position: relative; overflow: hidden; }
+  .file-input-wrap input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    z-index: 300;
+    animation: fadeIn 0.2s;
+    pointer-events: none;
+    text-align: center;
+    max-width: 260px;
+  }
+
+  /* ===== Theme Switcher ===== */
+  .theme-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .theme-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s;
+  }
+  .theme-option:active { transform: scale(0.92); }
+  .theme-swatch {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .theme-swatch.active {
+    border-color: #333;
+  }
+  .theme-label {
+    font-size: 11px;
+    color: #999;
+  }
+
+  /* ===== Responsive ===== */
+  @media (min-width: 480px) {
+    #app { border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; }
+  }
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <!-- ====== Header ====== -->
+  <header class="app-header">
+    <h1>旅行手账</h1>
+    <div class="trip-selector">
+      <select v-model="activeTripId" @change="onTripChange">
+        <option value="" disabled>选择旅行...</option>
+        <option v-for="t in trips" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
+    </div>
+    <button class="header-btn" @click="openTripForm()" title="新建旅行">+</button>
+  </header>
+
+  <!-- ====== Page Content ====== -->
+  <div class="page-content" ref="pageContent">
+    <!-- 游记 -->
+    <div v-show="currentTab === 'journal'">
+      <journal-view
+        v-if="activeTripId"
+        :entries="filteredEntries"
+        :people="filteredPeople"
+        @add="openEntryForm()"
+        @edit="editEntry($event)"
+        @delete="deleteEntry($event)">
+      </journal-view>
+      <div v-else class="empty-state">
+        <div class="icon">🧳</div>
+        <p>请先选择或创建一个旅行</p>
+      </div>
+    </div>
+
+    <!-- 记账 -->
+    <div v-show="currentTab === 'expenses'">
+      <expenses-view
+        v-if="activeTripId"
+        :expenses="filteredExpenses"
+        :people="filteredPeople"
+        :currencies="currencies"
+        @add="openExpenseForm()"
+        @edit="editExpense($event)"
+        @delete="deleteExpense($event)">
+      </expenses-view>
+      <div v-else class="empty-state">
+        <div class="icon">💰</div>
+        <p>请先选择或创建一个旅行</p>
+      </div>
+    </div>
+
+    <!-- 人员 -->
+    <div v-show="currentTab === 'people'">
+      <people-view
+        v-if="activeTripId"
+        :people="filteredPeople"
+        @add="openPersonForm()"
+        @delete="deletePerson($event)">
+      </people-view>
+      <div v-else class="empty-state">
+        <div class="icon">👥</div>
+        <p>请先选择或创建一个旅行</p>
+      </div>
+    </div>
+
+    <!-- 统计 -->
+    <div v-show="currentTab === 'stats'">
+      <stats-view
+        v-if="activeTripId"
+        :expenses="filteredExpenses"
+        :people="filteredPeople"
+        :currencies="currencies"
+        :categories="categories">
+      </stats-view>
+      <div v-else class="empty-state">
+        <div class="icon">📊</div>
+        <p>请先选择或创建一个旅行</p>
+      </div>
+    </div>
+
+    <!-- 设置 -->
+    <div v-show="currentTab === 'settings'">
+      <settings-view
+        :trips="trips"
+        :trip-count="trips.length"
+        :entry-count="entries.length"
+        :expense-count="expenses.length"
+        :themes="themes"
+        :theme="activeTheme"
+        @export="exportData"
+        @import="importData($event)"
+        @clear="confirmClear"
+        @delete-trip="deleteTrip($event)"
+        @switch-trip="activeTripId = $event"
+        @change-theme="onThemeChange($event)">
+      </settings-view>
+    </div>
+  </div>
+
+  <!-- ====== Bottom Tab Bar ====== -->
+  <div class="tab-bar safe-area-bottom">
+    <button class="tab-item" :class="{ active: currentTab === 'journal' }" @click="currentTab = 'journal'">
+      <span class="tab-icon">📓</span><span>计划</span>
+    </button>
+    <button class="tab-item" :class="{ active: currentTab === 'expenses' }" @click="currentTab = 'expenses'">
+      <span class="tab-icon">💰</span><span>记账</span>
+    </button>
+    <button class="tab-item" :class="{ active: currentTab === 'people' }" @click="currentTab = 'people'">
+      <span class="tab-icon">👥</span><span>人员</span>
+    </button>
+    <button class="tab-item" :class="{ active: currentTab === 'stats' }" @click="currentTab = 'stats'">
+      <span class="tab-icon">📊</span><span>统计</span>
+    </button>
+    <button class="tab-item" :class="{ active: currentTab === 'settings' }" @click="currentTab = 'settings'">
+      <span class="tab-icon">⚙️</span><span>设置</span>
+    </button>
+  </div>
+
+  <!-- ====== Teleported to body: all overlays ====== -->
+  <teleport to="body">
+    <!-- Single overlay for all bottom sheets (prevents backdrop stacking) -->
+    <div class="overlay" v-if="sheetVisible" @click.self="closeSheet">
+      <!-- Trip Form -->
+      <div class="sheet" v-if="showTripForm">
+        <div class="sheet-header">
+          <h3>{{ editingTrip ? '编辑旅行' : '新建旅行' }}</h3>
+          <button class="sheet-close" @click="closeTripForm">✕</button>
+        </div>
+        <div class="form-group">
+          <label>旅行名称</label>
+          <input class="form-control" v-model="tripForm.name" placeholder="如：2025 东京之旅">
+        </div>
+        <div class="form-group">
+          <label>开始日期</label>
+          <input class="form-control" type="date" v-model="tripForm.startDate">
+        </div>
+        <div class="form-group">
+          <label>结束日期</label>
+          <input class="form-control" type="date" v-model="tripForm.endDate">
+        </div>
+        <button class="btn btn-primary btn-block" @click="saveTrip">保存</button>
+      </div>
+
+      <!-- Entry Form -->
+      <div class="sheet" v-if="showEntryForm">
+        <div class="sheet-header">
+          <h3>{{ editingEntry ? '编辑计划' : '旅行计划' }}</h3>
+          <button class="sheet-close" @click="closeEntryForm">✕</button>
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input class="form-control" type="date" v-model="entryForm.date">
+        </div>
+        <div class="form-group">
+          <label>时间</label>
+          <input class="form-control" type="time" v-model="entryForm.time">
+        </div>
+        <div class="form-group">
+          <label>地点 / 地址</label>
+          <input class="form-control" v-model="entryForm.location" placeholder="如：浅草寺">
+        </div>
+        <div class="form-group">
+          <label>详细内容</label>
+          <textarea class="form-control" v-model="entryForm.content" rows="4" placeholder="记录你的旅行见闻..."></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" @click="saveEntry">保存</button>
+      </div>
+
+      <!-- Expense Form -->
+      <div class="sheet" v-if="showExpenseForm">
+        <div class="sheet-header">
+          <h3>{{ editingExpense ? '编辑支出' : '记一笔' }}</h3>
+          <button class="sheet-close" @click="closeExpenseForm">✕</button>
+        </div>
+        <div class="form-group">
+          <label>金额</label>
+          <input class="form-control" type="number" step="0.01" min="0" v-model="expenseForm.amount" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>币种</label>
+          <div class="chip-group">
+            <button class="chip" v-for="c in currencies" :key="c.code"
+              :class="{ active: expenseForm.currency === c.code }"
+              @click="expenseForm.currency = c.code">
+              {{ c.symbol }} {{ c.code }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>支出类型</label>
+          <div class="chip-group">
+            <button class="chip" v-for="cat in categories" :key="cat.key"
+              :class="{ active: expenseForm.category === cat.key }"
+              @click="expenseForm.category = cat.key">
+              {{ cat.icon }} {{ cat.label }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>支出方式</label>
+          <div class="chip-group">
+            <button class="chip" v-for="pm in paymentMethods" :key="pm.key"
+              :class="{ active: expenseForm.paymentMethod === pm.key }"
+              @click="expenseForm.paymentMethod = pm.key">
+              {{ pm.icon }} {{ pm.label }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>经手人</label>
+          <div class="chip-group">
+            <button class="chip" v-for="p in filteredPeople" :key="p.id"
+              :class="{ active: expenseForm.personId === p.id }"
+              @click="expenseForm.personId = p.id">
+              {{ p.name }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input class="form-control" type="date" v-model="expenseForm.date">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input class="form-control" v-model="expenseForm.note" placeholder="可选备注">
+        </div>
+        <button class="btn btn-primary btn-block" @click="saveExpense">保存</button>
+      </div>
+
+      <!-- Person Form -->
+      <div class="sheet" v-if="showPersonForm">
+        <div class="sheet-header">
+          <h3>添加同行人</h3>
+          <button class="sheet-close" @click="closePersonForm">✕</button>
+        </div>
+        <div class="form-group">
+          <label>姓名</label>
+          <input class="form-control" v-model="personForm.name" placeholder="输入姓名">
+        </div>
+        <button class="btn btn-primary btn-block" @click="savePerson">添加</button>
+      </div>
+    </div>
+
+    <!-- Dialog (separate overlay, higher z-index) -->
+    <div class="dialog-overlay" v-if="dialog.show" @click.self="dialog.show = false">
+      <div class="dialog-box">
+        <p>{{ dialog.message }}</p>
+        <div class="dialog-actions">
+          <button class="btn btn-outline" @click="dialog.show = false">取消</button>
+          <button class="btn btn-danger" @click="dialog.onConfirm(); dialog.show = false">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast (highest z-index) -->
+    <div class="toast" v-if="toast.show">{{ toast.message }}</div>
+  </teleport>
+</div>
+
+<!-- ====== Component Templates ====== -->
+<script type="text/x-template" id="journal-view-template">
+<div>
+  <div class="summary-card" v-if="entries.length === 0">
+    <div class="label">开始记录你的旅行吧</div>
+  </div>
+  <div v-if="entries.length === 0" class="empty-state">
+    <div class="icon">✈️</div>
+    <p>还没有游记，点击下方按钮写下第一篇</p>
+    <button class="btn btn-primary mt-12" @click="$emit('add')">旅行计划</button>
+  </div>
+  <div v-else class="timeline">
+    <div class="timeline-item" v-for="entry in sortedEntries" :key="entry.id">
+      <div class="tl-date">{{ entry.date }} {{ entry.time }}</div>
+      <div class="swipe-wrap"
+        @touchstart="onSwipeStart($event, entry)"
+        @touchmove="onSwipeMove($event, entry)"
+        @touchend="onSwipeEnd($event, entry)"
+        @mousedown="onSwipeStart($event, entry)"
+        @mousemove="onSwipeMove($event, entry)"
+        @mouseup="onSwipeEnd($event, entry)"
+        @mouseleave="onSwipeEnd($event, entry)">
+        <div class="swipe-delete-bg" :class="{ active: swipeStates[entry.id] }">
+          <span @click="confirmDelete(entry)" @touchend.stop style="padding:12px;display:inline-block;">🗑️ 删除</span>
+        </div>
+        <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }">
+          <div class="tl-location" v-if="entry.location">📍 {{ entry.location }}</div>
+          <div class="tl-content">{{ entry.content }}</div>
+          <button class="tl-edit-btn" @click="$emit('edit', entry)">✏️ 编辑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button v-if="entries.length > 0" class="btn btn-primary btn-block mt-16" @click="$emit('add')">旅行计划</button>
+</div>
+</script>
+
+<script type="text/x-template" id="expenses-view-template">
+<div>
+  <div class="summary-card">
+    <div class="label">总支出</div>
+    <div class="amount">{{ totalStr }}</div>
+  </div>
+  <div v-if="expenses.length === 0" class="empty-state">
+    <div class="icon">💸</div>
+    <p>还没有消费记录</p>
+    <button class="btn btn-primary mt-12" @click="$emit('add')">记一笔</button>
+  </div>
+  <div v-else>
+    <div class="list-item" v-for="item in sortedExpenses" :key="item.id">
+      <div class="avatar" :style="{ background: getPersonColor(item.personId) }">
+        {{ getPersonName(item.personId).charAt(0) }}
+      </div>
+      <div class="body">
+        <div class="title">{{ getCategoryLabel(item.category) }} · {{ getPaymentLabel(item.paymentMethod) }}</div>
+        <div class="sub">{{ item.date }} · {{ item.personName }}</div>
+        <div class="desc" v-if="item.note">{{ item.note }}</div>
+      </div>
+      <div class="right">
+        <div class="amount">{{ getCurrencySymbol(item.currency) }}{{ item.amount.toFixed(2) }}</div>
+        <div class="meta">{{ item.currency }}</div>
+        <button class="delete-btn" @click="$emit('delete', item)">✕</button>
+      </div>
+    </div>
+  </div>
+  <button v-if="expenses.length > 0" class="btn btn-primary btn-block mt-16" @click="$emit('add')">记一笔</button>
+</div>
+</script>
+
+<script type="text/x-template" id="people-view-template">
+<div>
+  <div v-if="people.length === 0" class="empty-state">
+    <div class="icon">👥</div>
+    <p>还没有添加同行人</p>
+    <button class="btn btn-primary mt-12" @click="$emit('add')">添加同行人</button>
+  </div>
+  <div v-else>
+    <div class="card" v-for="p in people" :key="p.id">
+      <div class="list-item" style="padding:0;border:none;">
+        <div class="avatar" :style="{ background: p.color }">{{ p.name.charAt(0) }}</div>
+        <div class="body">
+          <div class="title">{{ p.name }}</div>
+        </div>
+        <button class="delete-btn" @click="$emit('delete', p)">✕</button>
+      </div>
+    </div>
+  </div>
+  <button v-if="people.length > 0" class="btn btn-primary btn-block mt-16" @click="$emit('add')">添加同行人</button>
+</div>
+</script>
+
+<script type="text/x-template" id="stats-view-template">
+<div>
+  <div v-if="expenses.length === 0" class="empty-state">
+    <div class="icon">📊</div>
+    <p>暂无消费数据</p>
+  </div>
+  <div v-else>
+    <!-- Person Selector -->
+    <div class="card" style="padding:12px 16px;">
+      <div class="chip-group">
+        <button class="chip" :class="{ active: selectedPersonId === '__all__' }"
+          @click="selectedPersonId = '__all__'">📋 全部</button>
+        <button class="chip" v-for="p in people" :key="p.id"
+          :class="{ active: selectedPersonId === p.id }"
+          @click="selectedPersonId = p.id">
+          {{ p.name }}
+        </button>
+      </div>
+      <div class="chip-group" style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;" v-if="availableCurrencies.length > 0">
+        <button class="chip" v-for="c in availableCurrencies" :key="c.code"
+          :class="{ active: selectedCurrency === c.code }"
+          @click="selectedCurrency = c.code">
+          {{ c.symbol }} {{ c.code }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="summary-card">
+      <div class="label">{{ summaryTitle }}</div>
+      <div class="amount">{{ currentCurrency.symbol }}{{ displayTotal.toFixed(2) }}</div>
+    </div>
+
+    <!-- Pie Chart -->
+    <div class="card">
+      <div class="card-title">📊 {{ isPersonMode ? currentPerson.name + ' 的' : '' }}支出类型分布</div>
+      <div class="chart-container">
+        <canvas ref="chartCanvas"></canvas>
+      </div>
+      <table class="stats-table">
+        <thead><tr><th>类型</th><th>金额</th><th>占比</th></tr></thead>
+        <tbody>
+          <tr v-for="item in categoryStats" :key="item.key">
+            <td>{{ item.icon }} {{ item.label }}</td>
+            <td>{{ currentCurrency.symbol }}{{ item.total.toFixed(2) }}</td>
+            <td>{{ item.percent }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Per-person summary (only in 全部 mode) -->
+    <div class="card" v-if="selectedPersonId === '__all__'">
+      <div class="card-title">👤 人均支出</div>
+      <table class="stats-table">
+        <thead><tr><th>人员</th><th>金额</th><th>笔数</th></tr></thead>
+        <tbody>
+          <tr v-for="item in personStats" :key="item.personId">
+            <td>{{ item.name }}</td>
+            <td>{{ currentCurrency.symbol }}{{ item.total.toFixed(2) }}</td>
+            <td>{{ item.count }} 笔</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</script>
+
+<script type="text/x-template" id="settings-view-template">
+<div>
+  <div class="card">
+    <div class="card-title">📦 数据概览</div>
+    <div style="font-size:13px;color:#666;">
+      旅行：{{ tripCount }} 个<br>
+      游记：{{ entryCount }} 篇<br>
+      消费：{{ expenseCount }} 笔
+    </div>
+  </div>
+  <div class="card" v-if="trips.length > 0">
+    <div class="card-title">🗺️ 管理旅行</div>
+    <div class="list-item" v-for="t in trips" :key="t.id" style="padding:10px 0;">
+      <div class="body">
+        <div class="title">{{ t.name }}</div>
+        <div class="sub">{{ t.startDate || '' }} {{ t.endDate ? '~ ' + t.endDate : '' }}</div>
+      </div>
+      <button class="btn btn-outline btn-sm" @click="$emit('switch-trip', t.id)"
+        style="margin-right:6px;">切换</button>
+      <button class="delete-btn" @click="$emit('delete-trip', t)">✕</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">💾 数据管理</div>
+    <div class="settings-item">
+      <div>
+        <div class="label">导出数据</div>
+        <div class="desc">备份所有数据为 JSON 文件</div>
+      </div>
+      <button class="btn btn-primary btn-sm" @click="$emit('export')">导出</button>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="label">导入数据</div>
+        <div class="desc">从 JSON 文件恢复数据</div>
+      </div>
+      <div class="file-input-wrap">
+        <button class="btn btn-outline btn-sm">导入</button>
+        <input type="file" accept=".json" @change="$emit('import', $event)">
+      </div>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="label" style="color:#e74c3c;">清空所有数据</div>
+        <div class="desc">⚠️ 此操作不可恢复</div>
+      </div>
+      <button class="btn btn-danger btn-sm" @click="$emit('clear')">清空</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎨 主题颜色</div>
+    <div class="theme-grid">
+      <div v-for="(t, key) in themes" :key="key" class="theme-option" @click="$emit('change-theme', key)">
+        <div class="theme-swatch" :class="{ active: theme === key }"
+          :style="{ background: t.primary }"></div>
+        <span class="theme-label">{{ t.name }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">ℹ️ 关于</div>
+    <div style="font-size:13px;color:#666;">
+      旅行手账 v1.0<br>
+      纯离线 · 数据仅存储在本地浏览器<br>
+      支持 PWA 添加到桌面
+    </div>
+  </div>
+</div>
+</script>
+
+<!-- ====== Vue 3 & Chart.js ====== -->
+<script src="vue.global.prod.js"></script>
+<script src="chart.umd.min.js"></script>
+
+<!-- ====== Main App ====== -->
+<script>
+(function() {
+  const { createApp, ref, reactive, computed, watch, onMounted, nextTick, toRaw } = Vue;
+
+  // ==================== Constants ====================
+  const STORAGE_KEY = 'travel-journal-data';
+
+  const CATEGORIES = [
+    { key: 'dining', label: '餐饮', icon: '🍽️' },
+    { key: 'tickets', label: '门票', icon: '🎫' },
+    { key: 'transport', label: '交通', icon: '🚌' },
+    { key: 'accommodation', label: '住宿', icon: '🏨' },
+    { key: 'shopping', label: '购物', icon: '🛍️' },
+    { key: 'entertainment', label: '娱乐', icon: '🎮' },
+    { key: 'communication', label: '通讯', icon: '📱' },
+    { key: 'medical', label: '医疗', icon: '🏥' },
+    { key: 'other', label: '其他', icon: '💡' },
+  ];
+
+  const PAYMENT_METHODS = [
+    { key: 'alipay', label: '支付宝', icon: '💳' },
+    { key: 'wechat', label: '微信支付', icon: '💚' },
+    { key: 'cash', label: '现金', icon: '💵' },
+    { key: 'bank', label: '银行卡', icon: '🏦' },
+    { key: 'applepay', label: 'Apple Pay', icon: '📱' },
+  ];
+
+  const CURRENCIES = [
+    { code: 'CNY', symbol: '¥' },
+    { code: 'USD', symbol: '$' },
+    { code: 'EUR', symbol: '€' },
+    { code: 'JPY', symbol: '¥' },
+    { code: 'GBP', symbol: '£' },
+    { code: 'HKD', symbol: 'HK$' },
+    { code: 'THB', symbol: '฿' },
+    { code: 'KRW', symbol: '₩' },
+    { code: 'SGD', symbol: 'S$' },
+  ];
+
+  const THEME_STORAGE_KEY = 'travel-journal-theme';
+  const THEMES = {
+    green:  { name: '翡翠绿', primary: '#2D6A4F', light: '#40916C' },
+    blue:   { name: '海洋蓝', primary: '#1565C0', light: '#1976D2' },
+    purple: { name: '薰衣紫', primary: '#6A1B9A', light: '#7B1FA2' },
+    orange: { name: '落日橙', primary: '#E65100', light: '#EF6C00' },
+    pink:   { name: '玫瑰红', primary: '#C62828', light: '#D32F2F' },
+    teal:   { name: '青瓷绿', primary: '#00695C', light: '#00796B' },
+  };
+
+  function loadTheme() {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved && THEMES[saved]) return saved;
+    } catch (e) {}
+    return 'green';
+  }
+
+  function saveTheme(key) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, key); } catch (e) {}
+  }
+
+  function applyTheme(key) {
+    const theme = THEMES[key];
+    if (!theme) return;
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', theme.primary);
+    root.style.setProperty('--color-primary-light', theme.light);
+    // Update theme-color meta tag
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme.primary);
+  }
+
+  const COLORS = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D','#6D597A'];
+
+  // ==================== Helpers ====================
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+  }
+
+  function today() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  function nowTime() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function getCategoryByKey(key) {
+    return CATEGORIES.find(c => c.key === key) || CATEGORIES[CATEGORIES.length - 1];
+  }
+
+  function getPaymentByKey(key) {
+    return PAYMENT_METHODS.find(p => p.key === key) || PAYMENT_METHODS[0];
+  }
+
+  function getCurrencyByCode(code) {
+    return CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+  }
+
+  // ==================== Storage ====================
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        return {
+          trips: data.trips || [],
+          activeTripId: data.activeTripId || null,
+          entries: data.entries || [],
+          people: data.people || [],
+          expenses: data.expenses || [],
+        };
+      }
+    } catch (e) {
+      console.error('Load data error:', e);
+    }
+    return { trips: [], activeTripId: null, entries: [], people: [], expenses: [] };
+  }
+
+  function saveData(state) {
+    try {
+      const data = {
+        trips: toRaw(state.trips),
+        activeTripId: state.activeTripId,
+        entries: toRaw(state.entries),
+        people: toRaw(state.people),
+        expenses: toRaw(state.expenses),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Save data error:', e);
+      alert('⚠️ 存储空间不足，请导出数据备份后清理浏览器数据');
+    }
+  }
+
+  // ==================== Component: JournalView ====================
+  const JournalView = {
+    template: '#journal-view-template',
+    props: {
+      entries: Array,
+      people: Array,
+    },
+    emits: ['add', 'edit', 'delete'],
+    data() {
+      return {
+        swipeStates: {},
+        swipeStartX: 0,
+        swipingId: null,
+      };
+    },
+    computed: {
+      sortedEntries() {
+        return [...this.entries].sort((a, b) => {
+          if (a.date !== b.date) return b.date.localeCompare(a.date);
+          return (b.time || '').localeCompare(a.time || '');
+        });
+      }
+    },
+    methods: {
+      getClientX(e) {
+        return e.touches ? e.touches[0].clientX : e.clientX;
+      },
+      getEndClientX(e) {
+        return e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+      },
+      onSwipeStart(e, entry) {
+        this.swipeStartX = this.getClientX(e);
+        this.swipingId = entry.id;
+      },
+      onSwipeMove(e, entry) {
+        if (this.swipingId !== entry.id) return;
+        const clientX = this.getClientX(e);
+        if (!clientX) return;
+        const delta = this.swipeStartX - clientX;
+        if (delta > 40) {
+          this.swipeStates = { ...this.swipeStates, [entry.id]: true };
+        } else if (delta < 10) {
+          this.swipeStates = { ...this.swipeStates, [entry.id]: false };
+        }
+      },
+      onSwipeEnd(e, entry) {
+        if (this.swipingId !== entry.id) return;
+        const clientX = this.getEndClientX(e);
+        if (!clientX) { this.swipingId = null; return; }
+        const delta = this.swipeStartX - clientX;
+        if (delta > 60) {
+          this.swipeStates = { ...this.swipeStates, [entry.id]: true };
+        } else {
+          this.swipeStates = { ...this.swipeStates, [entry.id]: false };
+        }
+        this.swipingId = null;
+      },
+      confirmDelete(entry) {
+        this.swipeStates = { ...this.swipeStates, [entry.id]: false };
+        this.swipingId = null;
+        this.$emit('delete', entry);
+      }
+    }
+  };
+
+  // ==================== Component: ExpensesView ====================
+  const ExpensesView = {
+    template: '#expenses-view-template',
+    props: {
+      expenses: Array,
+      people: Array,
+      currencies: Array,
+    },
+    emits: ['add', 'edit', 'delete'],
+    computed: {
+      total() {
+        return this.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      },
+      totalStr() {
+        const mainCurrency = this.getMainCurrency();
+        return mainCurrency.symbol + this.total.toFixed(2);
+      },
+      sortedExpenses() {
+        return [...this.expenses].sort((a, b) => {
+          if (a.date !== b.date) return b.date.localeCompare(a.date);
+          return (b.createdAt || '').localeCompare(a.createdAt || '');
+        });
+      }
+    },
+    methods: {
+      getCategoryLabel(key) { return getCategoryByKey(key).label; },
+      getPaymentLabel(key) { return getPaymentByKey(key).label; },
+      getCurrencySymbol(code) { return getCurrencyByCode(code).symbol; },
+      getPersonColor(personId) {
+        const p = this.people.find(x => x.id === personId);
+        return p ? p.color : '#999';
+      },
+      getPersonName(personId) {
+        const p = this.people.find(x => x.id === personId);
+        return p ? p.name : '未知';
+      },
+      getMainCurrency() {
+        const codes = this.expenses.map(e => e.currency).filter(Boolean);
+        const freq = {};
+        let max = 0, main = 'CNY';
+        codes.forEach(c => { freq[c] = (freq[c] || 0) + 1; });
+        Object.entries(freq).forEach(([c, n]) => {
+          if (n > max) { max = n; main = c; }
+        });
+        return getCurrencyByCode(main);
+      }
+    }
+  };
+
+  // ==================== Component: PeopleView ====================
+  const PeopleView = {
+    template: '#people-view-template',
+    props: { people: Array },
+    emits: ['add', 'delete'],
+  };
+
+  // ==================== Component: StatsView ====================
+  const StatsView = {
+    template: '#stats-view-template',
+    props: {
+      expenses: Array,
+      people: Array,
+      currencies: Array,
+      categories: Array,
+    },
+    data() {
+      return {
+        chartInstance: null,
+        selectedPersonId: '__all__',
+        selectedCurrency: null,
+      };
+    },
+    computed: {
+      isPersonMode() {
+        return this.selectedPersonId !== '__all__' && this.selectedPersonId;
+      },
+      currentPerson() {
+        return this.people.find(p => p.id === this.selectedPersonId) || { name: '' };
+      },
+      // Currencies that exist in expenses (before currency filter)
+      availableCurrencies() {
+        const personFiltered = this.selectedPersonId === '__all__' || !this.selectedPersonId
+          ? this.expenses
+          : this.expenses.filter(e => e.personId === this.selectedPersonId);
+        const codes = [...new Set(personFiltered.map(e => e.currency).filter(Boolean))];
+        return codes.map(c => getCurrencyByCode(c)).sort((a, b) => a.code.localeCompare(b.code));
+      },
+      currentCurrency() {
+        if (!this.selectedCurrency) {
+          this.selectedCurrency = this.availableCurrencies[0]?.code || 'CNY';
+        }
+        return getCurrencyByCode(this.selectedCurrency);
+      },
+      // Filter by person AND currency
+      filteredExpenses() {
+        let list = this.expenses;
+        if (this.isPersonMode) {
+          list = list.filter(e => e.personId === this.selectedPersonId);
+        }
+        if (this.selectedCurrency) {
+          list = list.filter(e => e.currency === this.selectedCurrency);
+        }
+        return list;
+      },
+      displayTotal() {
+        return this.filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      },
+      summaryTitle() {
+        const person = this.isPersonMode ? this.currentPerson.name + ' 的' : '';
+        const currency = this.currentCurrency.symbol + this.currentCurrency.code;
+        return person + currency + ' 支出';
+      },
+      categoryStats() {
+        const map = {};
+        this.categories.forEach(c => {
+          map[c.key] = { ...c, total: 0 };
+        });
+        this.filteredExpenses.forEach(e => {
+          const key = e.category || 'other';
+          if (!map[key]) map[key] = { key, label: '其他', icon: '💡', total: 0 };
+          map[key].total += parseFloat(e.amount) || 0;
+        });
+        const arr = Object.values(map).filter(x => x.total > 0);
+        arr.forEach(item => {
+          const total = this.displayTotal;
+          item.percent = total > 0 ? ((item.total / total) * 100).toFixed(1) : 0;
+        });
+        return arr.sort((a, b) => b.total - a.total);
+      },
+      personStats() {
+        const map = {};
+        this.people.forEach(p => {
+          map[p.id] = { personId: p.id, name: p.name, total: 0, count: 0 };
+        });
+        // personStats uses currency-filtered expenses
+        this.filteredExpenses.forEach(e => {
+          if (!map[e.personId]) {
+            map[e.personId] = { personId: e.personId, name: e.personName || '未知', total: 0, count: 0 };
+          }
+          map[e.personId].total += parseFloat(e.amount) || 0;
+          map[e.personId].count++;
+        });
+        return Object.values(map).filter(x => x.count > 0).sort((a, b) => b.total - a.total);
+      },
+      chartColors() {
+        return this.categoryStats.map((_, i) => {
+          const palette = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D'];
+          return palette[i % palette.length];
+        });
+      }
+    },
+    watch: {
+      categoryStats: {
+        deep: true,
+        handler() { this.renderChart(); }
+      },
+      selectedPersonId() {
+        // Reset currency when person changes (the available currencies may change)
+        const curr = this.availableCurrencies[0];
+        this.selectedCurrency = curr ? curr.code : null;
+        this.renderChart();
+      },
+      selectedCurrency() {
+        this.renderChart();
+      }
+    },
+    methods: {
+      renderChart() {
+        if (!this.$refs.chartCanvas) return;
+        nextTick(() => {
+          if (this.chartInstance) {
+            this.chartInstance.destroy();
+            this.chartInstance = null;
+          }
+          const canvas = this.$refs.chartCanvas;
+          if (!canvas) return;
+          const labels = this.categoryStats.map(c => c.icon + ' ' + c.label);
+          const data = this.categoryStats.map(c => c.total);
+          const colors = this.chartColors;
+          if (data.length === 0) return;
+          this.chartInstance = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } }
+              }
+            }
+          });
+        });
+      }
+    },
+    mounted() {
+      this.renderChart();
+    },
+    unmounted() {
+      if (this.chartInstance) {
+        this.chartInstance.destroy();
+        this.chartInstance = null;
+      }
+    }
+  };
+
+  // ==================== Component: SettingsView ====================
+  const SettingsView = {
+    template: '#settings-view-template',
+    props: {
+      trips: Array,
+      tripCount: Number,
+      entryCount: Number,
+      expenseCount: Number,
+      themes: Object,
+      theme: String,
+    },
+    emits: ['export', 'import', 'clear', 'delete-trip', 'switch-trip', 'change-theme'],
+  };
+
+  // ==================== App ====================
+  const app = createApp({
+    components: {
+      JournalView,
+      ExpensesView,
+      PeopleView,
+      StatsView,
+      SettingsView,
+    },
+    data() {
+      const saved = loadData();
+      return {
+        // Data
+        trips: saved.trips,
+        activeTripId: saved.activeTripId,
+        entries: saved.entries,
+        people: saved.people,
+        expenses: saved.expenses,
+
+        // UI
+        currentTab: 'journal',
+        toast: { show: false, message: '' },
+        dialog: { show: false, message: '', onConfirm: () => {} },
+
+        // Trip form
+        showTripForm: false,
+        editingTrip: null,
+        tripForm: { name: '', startDate: '', endDate: '' },
+
+        // Entry form
+        showEntryForm: false,
+        editingEntry: null,
+        entryForm: { date: '', time: '', location: '', content: '' },
+
+        // Expense form
+        showExpenseForm: false,
+        editingExpense: null,
+        expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', date: '', note: '' },
+
+        // Person form
+        showPersonForm: false,
+        personForm: { name: '' },
+
+        // Theme
+        activeTheme: loadTheme(),
+        themes: THEMES,
+
+        // Constants
+        categories: CATEGORIES,
+        paymentMethods: PAYMENT_METHODS,
+        currencies: CURRENCIES,
+      };
+    },
+    computed: {
+      filteredEntries() {
+        return this.entries.filter(e => e.tripId === this.activeTripId);
+      },
+      filteredExpenses() {
+        return this.expenses.filter(e => e.tripId === this.activeTripId);
+      },
+      filteredPeople() {
+        return this.people.filter(p => p.tripId === this.activeTripId);
+      },
+      sheetVisible() {
+        return this.showTripForm || this.showEntryForm || this.showExpenseForm || this.showPersonForm;
+      }
+    },
+    watch: {
+      trips: { deep: true, handler: 'persist' },
+      entries: { deep: true, handler: 'persist' },
+      people: { deep: true, handler: 'persist' },
+      expenses: { deep: true, handler: 'persist' },
+      showTripForm: 'updateScrollLock',
+      showEntryForm: 'updateScrollLock',
+      showExpenseForm: 'updateScrollLock',
+      showPersonForm: 'updateScrollLock',
+      'dialog.show': 'updateScrollLock',
+    },
+    methods: {
+      persist() {
+        saveData({
+          trips: this.trips,
+          activeTripId: this.activeTripId,
+          entries: this.entries,
+          people: this.people,
+          expenses: this.expenses,
+        });
+      },
+      updateScrollLock() {
+        const locked = this.sheetVisible || this.dialog.show;
+        document.body.style.overflow = locked ? 'hidden' : '';
+      },
+      closeSheet() {
+        // Close whichever sheet is currently open
+        if (this.showTripForm) this.closeTripForm();
+        if (this.showEntryForm) this.closeEntryForm();
+        if (this.showExpenseForm) this.closeExpenseForm();
+        if (this.showPersonForm) this.closePersonForm();
+      },
+      showToast(msg) {
+        this.toast = { show: true, message: msg };
+        setTimeout(() => { this.toast.show = false; }, 2000);
+      },
+      confirm(msg, onConfirm) {
+        this.dialog = { show: true, message: msg, onConfirm };
+      },
+      onTripChange() {
+        // Just auto-saves; visit data is already filtered by computed
+      },
+
+      // ===== Trip Management =====
+      deleteTrip(trip) {
+        this.confirm(`确定删除旅行「${trip.name}」以及其下所有游记和消费记录吗？`, () => {
+          const tid = trip.id;
+          this.trips.splice(this.trips.findIndex(t => t.id === tid), 1);
+          for (let i = this.entries.length - 1; i >= 0; i--) {
+            if (this.entries[i].tripId === tid) this.entries.splice(i, 1);
+          }
+          for (let i = this.people.length - 1; i >= 0; i--) {
+            if (this.people[i].tripId === tid) this.people.splice(i, 1);
+          }
+          for (let i = this.expenses.length - 1; i >= 0; i--) {
+            if (this.expenses[i].tripId === tid) this.expenses.splice(i, 1);
+          }
+          if (this.activeTripId === tid) {
+            this.activeTripId = this.trips.length > 0 ? this.trips[0].id : null;
+          }
+          this.showToast('已删除');
+        });
+      },
+      openTripForm(trip) {
+        if (trip) {
+          this.editingTrip = trip;
+          this.tripForm = {
+            name: trip.name,
+            startDate: trip.startDate || '',
+            endDate: trip.endDate || '',
+          };
+        } else {
+          this.editingTrip = null;
+          this.tripForm = { name: '', startDate: '', endDate: '' };
+        }
+        this.showTripForm = true;
+      },
+      closeTripForm() {
+        this.showTripForm = false;
+        this.editingTrip = null;
+      },
+      saveTrip() {
+        if (!this.tripForm.name.trim()) {
+          this.showToast('请输入旅行名称');
+          return;
+        }
+        if (this.editingTrip) {
+          Object.assign(this.editingTrip, {
+            name: this.tripForm.name.trim(),
+            startDate: this.tripForm.startDate,
+            endDate: this.tripForm.endDate,
+          });
+        } else {
+          const trip = {
+            id: genId(),
+            name: this.tripForm.name.trim(),
+            startDate: this.tripForm.startDate,
+            endDate: this.tripForm.endDate,
+            createdAt: new Date().toISOString(),
+          };
+          this.trips.push(trip);
+          this.activeTripId = trip.id;
+        }
+        this.closeTripForm();
+        this.showToast(this.editingTrip ? '旅行已更新' : '旅行已创建');
+      },
+
+      // ===== Entry Management =====
+      openEntryForm(entry) {
+        if (entry) {
+          this.editingEntry = entry;
+          this.entryForm = {
+            date: entry.date || today(),
+            time: entry.time || '',
+            location: entry.location || '',
+            content: entry.content || '',
+          };
+        } else {
+          this.editingEntry = null;
+          this.entryForm = { date: today(), time: nowTime(), location: '', content: '' };
+        }
+        this.showEntryForm = true;
+      },
+      closeEntryForm() {
+        this.showEntryForm = false;
+        this.editingEntry = null;
+      },
+      saveEntry() {
+        if (!this.entryForm.content.trim()) {
+          this.showToast('请输入内容');
+          return;
+        }
+        if (this.editingEntry) {
+          Object.assign(this.editingEntry, {
+            date: this.entryForm.date,
+            time: this.entryForm.time,
+            location: this.entryForm.location,
+            content: this.entryForm.content,
+          });
+        } else {
+          this.entries.push({
+            id: genId(),
+            tripId: this.activeTripId,
+            date: this.entryForm.date,
+            time: this.entryForm.time,
+            location: this.entryForm.location,
+            content: this.entryForm.content,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        this.closeEntryForm();
+        this.showToast('保存成功');
+      },
+      editEntry(entry) { this.openEntryForm(entry); },
+      deleteEntry(entry) {
+        this.confirm('确定删除这条游记吗？', () => {
+          const idx = this.entries.findIndex(e => e.id === entry.id);
+          if (idx > -1) this.entries.splice(idx, 1);
+          this.showToast('已删除');
+        });
+      },
+
+      // ===== Expense Management =====
+      openExpenseForm(expense) {
+        if (expense) {
+          this.editingExpense = expense;
+          this.expenseForm = {
+            amount: expense.amount || '',
+            currency: expense.currency || 'CNY',
+            category: expense.category || 'dining',
+            paymentMethod: expense.paymentMethod || 'alipay',
+            personId: expense.personId || '',
+            date: expense.date || today(),
+            note: expense.note || '',
+          };
+        } else {
+          this.editingExpense = null;
+          const firstPerson = this.filteredPeople[0];
+          this.expenseForm = {
+            amount: '',
+            currency: 'CNY',
+            category: 'dining',
+            paymentMethod: 'alipay',
+            personId: firstPerson ? firstPerson.id : '',
+            date: today(),
+            note: '',
+          };
+        }
+        this.showExpenseForm = true;
+      },
+      closeExpenseForm() {
+        this.showExpenseForm = false;
+        this.editingExpense = null;
+      },
+      saveExpense() {
+        const amount = parseFloat(this.expenseForm.amount);
+        if (isNaN(amount) || amount <= 0) {
+          this.showToast('请输入有效金额');
+          return;
+        }
+        if (!this.expenseForm.personId) {
+          this.showToast('请选择经手人');
+          return;
+        }
+        const person = this.people.find(p => p.id === this.expenseForm.personId);
+        const personName = person ? person.name : '未知';
+        if (this.editingExpense) {
+          Object.assign(this.editingExpense, {
+            amount,
+            currency: this.expenseForm.currency,
+            category: this.expenseForm.category,
+            paymentMethod: this.expenseForm.paymentMethod,
+            personId: this.expenseForm.personId,
+            personName,
+            date: this.expenseForm.date,
+            note: this.expenseForm.note,
+          });
+        } else {
+          this.expenses.push({
+            id: genId(),
+            tripId: this.activeTripId,
+            amount,
+            currency: this.expenseForm.currency,
+            category: this.expenseForm.category,
+            paymentMethod: this.expenseForm.paymentMethod,
+            personId: this.expenseForm.personId,
+            personName,
+            date: this.expenseForm.date,
+            note: this.expenseForm.note,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        this.closeExpenseForm();
+        this.showToast('已记录');
+      },
+      editExpense(expense) { this.openExpenseForm(expense); },
+      deleteExpense(expense) {
+        this.confirm('确定删除这笔支出吗？', () => {
+          const idx = this.expenses.findIndex(e => e.id === expense.id);
+          if (idx > -1) this.expenses.splice(idx, 1);
+          this.showToast('已删除');
+        });
+      },
+
+      // ===== Person Management =====
+      openPersonForm() {
+        this.personForm = { name: '' };
+        this.showPersonForm = true;
+      },
+      closePersonForm() {
+        this.showPersonForm = false;
+      },
+      savePerson() {
+        if (!this.personForm.name.trim()) {
+          this.showToast('请输入姓名');
+          return;
+        }
+        const usedColors = this.filteredPeople.map(p => p.color);
+        const color = COLORS.find(c => !usedColors.includes(c)) || COLORS[this.filteredPeople.length % COLORS.length];
+        this.people.push({
+          id: genId(),
+          tripId: this.activeTripId,
+          name: this.personForm.name.trim(),
+          color,
+          createdAt: new Date().toISOString(),
+        });
+        this.closePersonForm();
+        this.showToast('已添加');
+      },
+      deletePerson(person) {
+        this.confirm(`确定移除 ${person.name} 吗？`, () => {
+          const idx = this.people.findIndex(p => p.id === person.id);
+          if (idx > -1) this.people.splice(idx, 1);
+          this.showToast('已移除');
+        });
+      },
+
+      // ===== Theme =====
+      onThemeChange(key) {
+        this.activeTheme = key;
+        applyTheme(key);
+        saveTheme(key);
+      },
+
+      // ===== Import / Export =====
+      exportData() {
+        try {
+          const data = {
+            version: '1.0',
+            exportedAt: new Date().toISOString(),
+            trips: toRaw(this.trips),
+            entries: toRaw(this.entries),
+            people: toRaw(this.people),
+            expenses: toRaw(this.expenses),
+          };
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `旅行手账备份_${today()}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.showToast('导出成功');
+        } catch (e) {
+          console.error('Export error:', e);
+          this.showToast('导出失败');
+        }
+      },
+      importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (!data.trips || !data.entries || !data.people || !data.expenses) {
+              this.showToast('无效的数据文件');
+              return;
+            }
+            this.confirm('导入将覆盖当前所有数据，确认？', () => {
+              this.trips.splice(0, this.trips.length, ...data.trips);
+              this.entries.splice(0, this.entries.length, ...data.entries);
+              this.people.splice(0, this.people.length, ...data.people);
+              this.expenses.splice(0, this.expenses.length, ...data.expenses);
+              if (this.trips.length > 0) {
+                this.activeTripId = this.trips[0].id;
+              }
+              this.showToast('导入成功');
+            });
+          } catch (err) {
+            this.showToast('文件解析失败');
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      },
+      confirmClear() {
+        this.confirm('确定清空所有数据吗？此操作不可恢复！', () => {
+          this.trips.splice(0);
+          this.entries.splice(0);
+          this.people.splice(0);
+          this.expenses.splice(0);
+          this.activeTripId = null;
+          this.showToast('已清空');
+        });
+      },
+    },
+    mounted() {
+      // Apply saved theme
+      applyTheme(this.activeTheme);
+      // Auto-select first trip if activeTripId is invalid
+      if (this.trips.length > 0 && !this.trips.find(t => t.id === this.activeTripId)) {
+        this.activeTripId = this.trips[0].id;
+      }
+    },
+  });
+
+  app.mount('#app');
+})();
+</script>
+<script>
+  // Register Service Worker for PWA offline support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function(err) {
+      console.warn('SW registration failed:', err);
+    });
+  }
+</script>
+</body>
+</html>
