@@ -1534,12 +1534,6 @@
           return palette[i % palette.length];
         });
       },
-      getExpenseBeneficiaries(expense) {
-        if (expense.beneficiaryIds && expense.beneficiaryIds.length > 0) {
-          return expense.beneficiaryIds.filter(id => this.people.some(p => p.id === id));
-        }
-        return this.people.map(p => p.id);
-      },
       settlementBalances() {
         const balances = {};
         this.people.forEach(p => {
@@ -1601,6 +1595,12 @@
       }
     },
     methods: {
+      getExpenseBeneficiaries(expense) {
+        if (expense.beneficiaryIds && expense.beneficiaryIds.length > 0) {
+          return expense.beneficiaryIds.filter(id => this.people.some(p => p.id === id));
+        }
+        return this.people.map(p => p.id);
+      },
       renderChart() {
         if (!this.$refs.chartCanvas) return;
         nextTick(() => {
