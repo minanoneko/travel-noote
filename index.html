@@ -829,7 +829,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label>经手人</label>
+          <label>经手人（谁付的）</label>
           <div class="chip-group">
             <button class="chip" v-for="p in filteredPeople" :key="p.id"
               :class="{ active: expenseForm.personId === p.id }"
@@ -837,6 +837,17 @@
               {{ p.name }}
             </button>
           </div>
+        </div>
+        <div class="form-group">
+          <label>受益人（这笔钱给谁花的）</label>
+          <div class="chip-group">
+            <button class="chip" v-for="p in filteredPeople" :key="p.id"
+              :class="{ active: expenseForm.beneficiaryIds.includes(p.id) }"
+              @click="toggleBeneficiary(p.id)">
+              {{ p.name }}
+            </button>
+          </div>
+          <div class="form-hint" v-if="expenseForm.beneficiaryIds.length > 1">{{ expenseForm.beneficiaryIds.length }} 人均摊，人均 {{ (expenseForm.amount / expenseForm.beneficiaryIds.length || 0).toFixed(2) }}</div>
         </div>
         <div class="form-group">
           <label>日期</label>
@@ -934,7 +945,7 @@
       </div>
       <div class="body">
         <div class="title">{{ getCategoryLabel(item.category) }} · {{ getPaymentLabel(item.paymentMethod) }}</div>
-        <div class="sub">{{ item.date }} · {{ item.personName }}</div>
+        <div class="sub">{{ item.date }} · 付款：{{ item.personName }}<span v-if="getBeneficiaryText(item)"> · 分摊：{{ getBeneficiaryText(item) }}</span></div>
         <div class="desc" v-if="item.note">{{ item.note }}</div>
       </div>
       <div class="right">
@@ -1035,6 +1046,46 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Settlement (only in 全部 mode) -->
+    <div class="card" v-if="selectedPersonId === '__all__' && settlementBalances.length > 0">
+      <div class="card-title">🧾 结算清单（{{ currentCurrency.symbol }}{{ currentCurrency.code }}）</div>
+      <div style="font-size:13px;color:#888;margin-bottom:12px;">
+        正数 = 别人该转给你，负数 = 你该转给别人
+      </div>
+      <table class="stats-table" style="margin-bottom:12px;">
+        <thead><tr><th>人员</th><th>实付</th><th>应担</th><th>净额</th></tr></thead>
+        <tbody>
+          <tr v-for="b in settlementBalances" :key="b.personId">
+            <td>{{ b.name }}</td>
+            <td>{{ currentCurrency.symbol }}{{ b.totalPaid.toFixed(2) }}</td>
+            <td>{{ currentCurrency.symbol }}{{ b.totalShouldered.toFixed(2) }}</td>
+            <td :style="{ color: b.net >= 0 ? '#2D6A4F' : '#e74c3c', fontWeight: '600' }">
+              {{ b.net >= 0 ? '+' : '' }}{{ currentCurrency.symbol }}{{ b.net.toFixed(2) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-if="settlementPlan.length > 0" style="background:#f8faf8;border-radius:8px;padding:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--color-primary);margin-bottom:8px;">
+          💰 转账方案
+        </div>
+        <div v-for="(item, idx) in settlementPlan" :key="idx"
+          style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e8eceb;font-size:14px;">
+          <span style="color:#e74c3c;">{{ item.from.name }}</span>
+          <span style="color:#999;">→</span>
+          <span style="color:#2D6A4F;">{{ item.to.name }}</span>
+          <span style="flex:1;text-align:right;font-weight:600;">
+            {{ currentCurrency.symbol }}{{ item.amount.toFixed(2) }}
+          </span>
+        </div>
+      </div>
+
+      <div v-else style="text-align:center;color:#999;font-size:13px;padding:12px;">
+        已结清，无需转账 ✨
+      </div>
+    </div>
   </div>
 </div>
 </script>
@@ -1108,7 +1159,7 @@
   <div class="card">
     <div class="card-title">ℹ️ 关于</div>
     <div style="font-size:13px;color:#666;">
-      旅行手账 v1.0<br>
+      旅行手账 v1.0.2<br>
       纯离线 · 数据仅存储在本地浏览器<br>
       支持 PWA 添加到桌面
     </div>
@@ -1367,6 +1418,17 @@
           if (n > max) { max = n; main = c; }
         });
         return getCurrencyByCode(main);
+      },
+      getBeneficiaryText(expense) {
+        const allIds = this.people.map(p => p.id);
+        const ids = expense.beneficiaryIds && expense.beneficiaryIds.length > 0
+          ? expense.beneficiaryIds : allIds;
+        if (ids.length === allIds.length) return '';
+        const names = ids.map(id => {
+          const p = this.people.find(x => x.id === id);
+          return p ? p.name : '';
+        }).filter(Boolean);
+        return names.length > 0 ? names.length + '人（' + names.join('、') + '）' : '';
       }
     }
   };
@@ -1471,6 +1533,56 @@
           const palette = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D'];
           return palette[i % palette.length];
         });
+      },
+      getExpenseBeneficiaries(expense) {
+        if (expense.beneficiaryIds && expense.beneficiaryIds.length > 0) {
+          return expense.beneficiaryIds.filter(id => this.people.some(p => p.id === id));
+        }
+        return this.people.map(p => p.id);
+      },
+      settlementBalances() {
+        const balances = {};
+        this.people.forEach(p => {
+          balances[p.id] = { personId: p.id, name: p.name, totalPaid: 0, totalShouldered: 0, net: 0 };
+        });
+        this.filteredExpenses.forEach(e => {
+          const amount = parseFloat(e.amount) || 0;
+          if (amount <= 0) return;
+          if (balances[e.personId]) {
+            balances[e.personId].totalPaid += amount;
+          }
+          const beneficiaryIds = this.getExpenseBeneficiaries(e);
+          const share = amount / Math.max(beneficiaryIds.length, 1);
+          beneficiaryIds.forEach(id => {
+            if (balances[id]) {
+              balances[id].totalShouldered += share;
+            }
+          });
+        });
+        Object.values(balances).forEach(b => {
+          b.net = b.totalPaid - b.totalShouldered;
+        });
+        return Object.values(balances).filter(b => Math.abs(b.net) >= 0.01);
+      },
+      settlementPlan() {
+        const balances = this.settlementBalances.map(b => ({ ...b }));
+        const creditors = balances.filter(b => b.net > 0.01).sort((a, b) => b.net - a.net);
+        const debtors = balances.filter(b => b.net < -0.01).sort((a, b) => a.net - b.net);
+        const plan = [];
+        for (const debtor of debtors) {
+          let remaining = -debtor.net;
+          for (const creditor of creditors) {
+            if (remaining <= 0.01) break;
+            if (creditor.net <= 0.01) continue;
+            const amount = Math.min(remaining, creditor.net);
+            if (amount >= 0.01) {
+              plan.push({ from: debtor, to: creditor, amount });
+              creditor.net -= amount;
+              remaining -= amount;
+            }
+          }
+        }
+        return plan;
       }
     },
     watch: {
@@ -1581,7 +1693,7 @@
         // Expense form
         showExpenseForm: false,
         editingExpense: null,
-        expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', date: '', note: '' },
+        expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', beneficiaryIds: [], date: '', note: '' },
 
         // Person form
         showPersonForm: false,
@@ -1783,6 +1895,7 @@
             category: expense.category || 'dining',
             paymentMethod: expense.paymentMethod || 'alipay',
             personId: expense.personId || '',
+            beneficiaryIds: expense.beneficiaryIds ? [...expense.beneficiaryIds] : [...this.filteredPeople.map(p => p.id)],
             date: expense.date || today(),
             note: expense.note || '',
           };
@@ -1795,11 +1908,21 @@
             category: 'dining',
             paymentMethod: 'alipay',
             personId: firstPerson ? firstPerson.id : '',
+            beneficiaryIds: this.filteredPeople.map(p => p.id),
             date: today(),
             note: '',
           };
         }
         this.showExpenseForm = true;
+      },
+      toggleBeneficiary(pid) {
+        const ids = this.expenseForm.beneficiaryIds;
+        const idx = ids.indexOf(pid);
+        if (idx > -1) {
+          if (ids.length > 1) ids.splice(idx, 1);
+        } else {
+          ids.push(pid);
+        }
       },
       closeExpenseForm() {
         this.showExpenseForm = false;
@@ -1825,6 +1948,7 @@
             paymentMethod: this.expenseForm.paymentMethod,
             personId: this.expenseForm.personId,
             personName,
+            beneficiaryIds: [...this.expenseForm.beneficiaryIds],
             date: this.expenseForm.date,
             note: this.expenseForm.note,
           });
@@ -1838,6 +1962,7 @@
             paymentMethod: this.expenseForm.paymentMethod,
             personId: this.expenseForm.personId,
             personName,
+            beneficiaryIds: [...this.expenseForm.beneficiaryIds],
             date: this.expenseForm.date,
             note: this.expenseForm.note,
             createdAt: new Date().toISOString(),
