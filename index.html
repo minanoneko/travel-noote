@@ -660,6 +660,7 @@
         :expenses="filteredExpenses"
         :people="filteredPeople"
         :currencies="currencies"
+        :base-currency="baseCurrency"
         @add="openExpenseForm()"
         @edit="editExpense($event)"
         @delete="deleteExpense($event)">
@@ -691,7 +692,9 @@
         :expenses="filteredExpenses"
         :people="filteredPeople"
         :currencies="currencies"
-        :categories="categories">
+        :categories="categories"
+        :base-currency="baseCurrency"
+        @set-currency-rate="setCurrencyRate">
       </stats-view>
       <div v-else class="empty-state">
         <div class="icon">📊</div>
@@ -706,6 +709,8 @@
         :trip-count="trips.length"
         :entry-count="entries.length"
         :expense-count="expenses.length"
+        :currencies="currencies"
+        :base-currency="baseCurrency"
         :themes="themes"
         :theme="activeTheme"
         @export="exportData"
@@ -714,7 +719,8 @@
         @clear="confirmClear"
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
-        @change-theme="onThemeChange($event)">
+        @change-theme="onThemeChange($event)"
+        @change-base-currency="baseCurrency = $event">
       </settings-view>
     </div>
   </div>
@@ -943,14 +949,14 @@
       <div class="avatar" :style="{ background: getPersonColor(item.personId) }">
         {{ getPersonName(item.personId).charAt(0) }}
       </div>
-      <div class="body">
+      <div class="body" style="cursor:pointer;" @click="$emit('edit', item)">
         <div class="title">{{ getCategoryLabel(item.category) }} · {{ getPaymentLabel(item.paymentMethod) }}</div>
         <div class="sub">{{ item.date }} · 付款：{{ item.personName }}<span v-if="getBeneficiaryText(item)"> · 分摊：{{ getBeneficiaryText(item) }}</span></div>
         <div class="desc" v-if="item.note">{{ item.note }}</div>
       </div>
       <div class="right">
         <div class="amount">{{ getCurrencySymbol(item.currency) }}{{ item.amount.toFixed(2) }}</div>
-        <div class="meta">{{ item.currency }}</div>
+        <div class="meta">{{ item.currency }}<span v-if="getBaseConversion(item)"> · {{ getBaseConversion(item) }}</span></div>
         <button class="delete-btn" @click="$emit('delete', item)">✕</button>
       </div>
     </div>
@@ -999,19 +1005,38 @@
           {{ p.name }}
         </button>
       </div>
-      <div class="chip-group" style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;" v-if="availableCurrencies.length > 0">
-        <button class="chip" v-for="c in availableCurrencies" :key="c.code"
-          :class="{ active: selectedCurrency === c.code }"
-          @click="selectedCurrency = c.code">
-          {{ c.symbol }} {{ c.code }}
-        </button>
+    </div>
+
+    <!-- Exchange Rate Setting (for foreign currencies) -->
+    <div class="card" v-if="foreignCurrencies.length > 0 && selectedPersonId === '__all__'">
+      <div class="card-title">🔄 货币换算</div>
+      <div style="font-size:13px;color:#888;margin-bottom:12px;">
+        为外币设置汇率，建议整个旅行统一用一个汇率，方便结算
       </div>
+      <div v-for="fc in foreignCurrencies" :key="fc.code" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:14px;font-weight:500;min-width:60px;">1 {{ fc.code }}</span>
+          <span style="color:#999;">=</span>
+          <input class="form-control" type="number" step="0.0001" min="0"
+            v-model="rateInputs[fc.code]" placeholder="如：0.05"
+            style="width:100px;padding:6px 10px;font-size:13px;">
+          <span style="font-size:14px;min-width:40px;">{{ baseSymbol }}{{ baseCode }}</span>
+          <button class="btn btn-primary btn-sm" @click="applyRate(fc.code)">
+            {{ fc.rateSet > 0 ? '更新' : '应用' }}（{{ fc.rateSet }}/{{ fc.count }}）
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unconverted warning -->
+    <div class="card" v-if="unconvertedCount > 0" style="background:#fff8e1;border:1px solid #ffe082;">
+      <div style="font-size:13px;color:#e65100;">⚠️ 有 {{ unconvertedCount }} 笔外币支出未设置汇率，统计金额可能不准确</div>
     </div>
 
     <!-- Summary Card -->
     <div class="summary-card">
       <div class="label">{{ summaryTitle }}</div>
-      <div class="amount">{{ currentCurrency.symbol }}{{ displayTotal.toFixed(2) }}</div>
+      <div class="amount">{{ baseSymbol }}{{ displayTotal.toFixed(2) }}</div>
     </div>
 
     <!-- Pie Chart -->
@@ -1025,7 +1050,7 @@
         <tbody>
           <tr v-for="item in categoryStats" :key="item.key">
             <td>{{ item.icon }} {{ item.label }}</td>
-            <td>{{ currentCurrency.symbol }}{{ item.total.toFixed(2) }}</td>
+            <td>{{ baseSymbol }}{{ item.total.toFixed(2) }}</td>
             <td>{{ item.percent }}%</td>
           </tr>
         </tbody>
@@ -1040,7 +1065,7 @@
         <tbody>
           <tr v-for="item in personStats" :key="item.personId">
             <td>{{ item.name }}</td>
-            <td>{{ currentCurrency.symbol }}{{ item.total.toFixed(2) }}</td>
+            <td>{{ baseSymbol }}{{ item.total.toFixed(2) }}</td>
             <td>{{ item.count }} 笔</td>
           </tr>
         </tbody>
@@ -1049,7 +1074,7 @@
 
     <!-- Settlement (only in 全部 mode) -->
     <div class="card" v-if="selectedPersonId === '__all__' && settlementBalances.length > 0">
-      <div class="card-title">🧾 结算清单（{{ currentCurrency.symbol }}{{ currentCurrency.code }}）</div>
+      <div class="card-title">🧾 结算清单（{{ baseSymbol }}{{ baseCode }}）</div>
       <div style="font-size:13px;color:#888;margin-bottom:12px;">
         正数 = 别人该转给你，负数 = 你该转给别人
       </div>
@@ -1058,10 +1083,10 @@
         <tbody>
           <tr v-for="b in settlementBalances" :key="b.personId">
             <td>{{ b.name }}</td>
-            <td>{{ currentCurrency.symbol }}{{ b.totalPaid.toFixed(2) }}</td>
-            <td>{{ currentCurrency.symbol }}{{ b.totalShouldered.toFixed(2) }}</td>
+            <td>{{ baseSymbol }}{{ b.totalPaid.toFixed(2) }}</td>
+            <td>{{ baseSymbol }}{{ b.totalShouldered.toFixed(2) }}</td>
             <td :style="{ color: b.net >= 0 ? '#2D6A4F' : '#e74c3c', fontWeight: '600' }">
-              {{ b.net >= 0 ? '+' : '' }}{{ currentCurrency.symbol }}{{ b.net.toFixed(2) }}
+              {{ b.net >= 0 ? '+' : '' }}{{ baseSymbol }}{{ b.net.toFixed(2) }}
             </td>
           </tr>
         </tbody>
@@ -1077,7 +1102,7 @@
           <span style="color:#999;">→</span>
           <span style="color:#2D6A4F;">{{ item.to.name }}</span>
           <span style="flex:1;text-align:right;font-weight:600;">
-            {{ currentCurrency.symbol }}{{ item.amount.toFixed(2) }}
+            {{ baseSymbol }}{{ item.amount.toFixed(2) }}
           </span>
         </div>
       </div>
@@ -1100,7 +1125,20 @@
       消费：{{ expenseCount }} 笔
     </div>
   </div>
-  <div class="card" v-if="trips.length > 0">
+  <div class="card">
+    <div class="card-title">💰 本位币</div>
+    <div class="desc" style="font-size:13px;color:#888;margin-bottom:12px;">
+      所有支出统一换算成本位币进行统计
+    </div>
+    <div class="chip-group">
+      <button class="chip" v-for="c in currencies" :key="c.code"
+        :class="{ active: baseCurrency === c.code }"
+        @click="$emit('change-base-currency', c.code)">
+        {{ c.symbol }} {{ c.code }}
+      </button>
+    </div>
+  </div>
+  <div class="card" v-if="trips.length > 0">>
     <div class="card-title">🗺️ 管理旅行</div>
     <div class="list-item" v-for="t in trips" :key="t.id" style="padding:10px 0;">
       <div class="body">
@@ -1159,7 +1197,7 @@
   <div class="card">
     <div class="card-title">ℹ️ 关于</div>
     <div style="font-size:13px;color:#666;">
-      旅行手账 v1.0.2<br>
+      旅行手账 v1.0.3<br>
       纯离线 · 数据仅存储在本地浏览器<br>
       支持 PWA 添加到桌面
     </div>
@@ -1242,6 +1280,21 @@
     // Update theme-color meta tag
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme.primary);
+  }
+
+  // ==================== Base Currency ====================
+  const BASE_CURRENCY_KEY = 'travel-journal-base-currency';
+
+  function loadBaseCurrency() {
+    try {
+      const saved = localStorage.getItem(BASE_CURRENCY_KEY);
+      if (saved && CURRENCIES.some(c => c.code === saved)) return saved;
+    } catch (e) {}
+    return 'CNY';
+  }
+
+  function saveBaseCurrency(key) {
+    try { localStorage.setItem(BASE_CURRENCY_KEY, key); } catch (e) {}
   }
 
   const COLORS = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D','#6D597A'];
@@ -1380,6 +1433,7 @@
       expenses: Array,
       people: Array,
       currencies: Array,
+      baseCurrency: String,
     },
     emits: ['add', 'edit', 'delete'],
     computed: {
@@ -1429,6 +1483,12 @@
           return p ? p.name : '';
         }).filter(Boolean);
         return names.length > 0 ? names.length + '人（' + names.join('、') + '）' : '';
+      },
+      getBaseConversion(expense) {
+        const baseAmount = expense.baseAmount != null ? expense.baseAmount : null;
+        if (baseAmount == null || expense.currency === this.baseCurrency) return '';
+        const sym = getCurrencyByCode(this.baseCurrency).symbol;
+        return sym + baseAmount.toFixed(2);
       }
     }
   };
@@ -1448,12 +1508,14 @@
       people: Array,
       currencies: Array,
       categories: Array,
+      baseCurrency: String,
     },
+    emits: ['set-currency-rate'],
     data() {
       return {
         chartInstance: null,
         selectedPersonId: '__all__',
-        selectedCurrency: null,
+        rateInputs: {},
       };
     },
     computed: {
@@ -1463,40 +1525,60 @@
       currentPerson() {
         return this.people.find(p => p.id === this.selectedPersonId) || { name: '' };
       },
-      // Currencies that exist in expenses (before currency filter)
-      availableCurrencies() {
-        const personFiltered = this.selectedPersonId === '__all__' || !this.selectedPersonId
-          ? this.expenses
-          : this.expenses.filter(e => e.personId === this.selectedPersonId);
-        const codes = [...new Set(personFiltered.map(e => e.currency).filter(Boolean))];
-        return codes.map(c => getCurrencyByCode(c)).sort((a, b) => a.code.localeCompare(b.code));
+      baseSymbol() {
+        const c = getCurrencyByCode(this.baseCurrency);
+        return c ? c.symbol : '¥';
       },
-      currentCurrency() {
-        if (!this.selectedCurrency) {
-          this.selectedCurrency = this.availableCurrencies[0]?.code || 'CNY';
-        }
-        return getCurrencyByCode(this.selectedCurrency);
+      baseCode() {
+        return this.baseCurrency || 'CNY';
       },
-      // Filter by person AND currency
+      foreignCurrencies() {
+        const codes = [...new Set(this.expenses
+          .filter(e => e.currency && e.currency !== this.baseCurrency)
+          .map(e => e.currency))];
+        return codes.map(code => ({
+          code,
+          symbol: getCurrencyByCode(code).symbol,
+          count: this.expenses.filter(e => e.currency === code).length,
+          rateSet: this.expenses.filter(e => e.currency === code && e.exchangeRate != null).length,
+        }));
+      },
+      unconvertedCount() {
+        return this.expenses.filter(e => {
+          if (e.currency === this.baseCurrency) return false;
+          return e.exchangeRate == null;
+        }).length;
+      },
+      getBaseAmount() {
+        return (e) => {
+          if (e.baseAmount != null) return e.baseAmount;
+          if (e.exchangeRate != null) return (parseFloat(e.amount) || 0) * e.exchangeRate;
+          if (e.currency === this.baseCurrency) return parseFloat(e.amount) || 0;
+          return null;
+        };
+      },
+      // Filter by person only (all amounts converted to base currency)
       filteredExpenses() {
         let list = this.expenses;
         if (this.isPersonMode) {
           list = list.filter(e => e.personId === this.selectedPersonId);
         }
-        if (this.selectedCurrency) {
-          list = list.filter(e => e.currency === this.selectedCurrency);
-        }
         return list;
       },
       displayTotal() {
-        return this.filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const get = this.getBaseAmount;
+        return this.filteredExpenses.reduce((sum, e) => {
+          const amt = get(e);
+          return amt != null ? sum + amt : sum;
+        }, 0);
       },
       summaryTitle() {
         const person = this.isPersonMode ? this.currentPerson.name + ' 的' : '';
-        const currency = this.currentCurrency.symbol + this.currentCurrency.code;
-        return person + currency + ' 支出';
+        const suffix = this.unconvertedCount > 0 ? '（有未换算的外币）' : '';
+        return person + this.baseSymbol + this.baseCode + ' 支出' + suffix;
       },
       categoryStats() {
+        const get = this.getBaseAmount;
         const map = {};
         this.categories.forEach(c => {
           map[c.key] = { ...c, total: 0 };
@@ -1504,7 +1586,8 @@
         this.filteredExpenses.forEach(e => {
           const key = e.category || 'other';
           if (!map[key]) map[key] = { key, label: '其他', icon: '💡', total: 0 };
-          map[key].total += parseFloat(e.amount) || 0;
+          const amt = get(e);
+          if (amt != null) map[key].total += amt;
         });
         const arr = Object.values(map).filter(x => x.total > 0);
         arr.forEach(item => {
@@ -1518,13 +1601,14 @@
         this.people.forEach(p => {
           map[p.id] = { personId: p.id, name: p.name, total: 0, count: 0 };
         });
-        // personStats uses currency-filtered expenses
+        const get = this.getBaseAmount;
         this.filteredExpenses.forEach(e => {
           if (!map[e.personId]) {
             map[e.personId] = { personId: e.personId, name: e.personName || '未知', total: 0, count: 0 };
           }
-          map[e.personId].total += parseFloat(e.amount) || 0;
-          map[e.personId].count++;
+          const amt = get(e);
+          if (amt != null) map[e.personId].total += amt;
+map[e.personId].count++;
         });
         return Object.values(map).filter(x => x.count > 0).sort((a, b) => b.total - a.total);
       },
@@ -1539,9 +1623,10 @@
         this.people.forEach(p => {
           balances[p.id] = { personId: p.id, name: p.name, totalPaid: 0, totalShouldered: 0, net: 0 };
         });
+        const get = this.getBaseAmount;
         this.filteredExpenses.forEach(e => {
-          const amount = parseFloat(e.amount) || 0;
-          if (amount <= 0) return;
+          const amount = get(e);
+          if (amount == null || amount <= 0) return;
           if (balances[e.personId]) {
             balances[e.personId].totalPaid += amount;
           }
@@ -1585,12 +1670,6 @@
         handler() { this.renderChart(); }
       },
       selectedPersonId() {
-        // Reset currency when person changes (the available currencies may change)
-        const curr = this.availableCurrencies[0];
-        this.selectedCurrency = curr ? curr.code : null;
-        this.renderChart();
-      },
-      selectedCurrency() {
         this.renderChart();
       }
     },
@@ -1600,6 +1679,11 @@
           return expense.beneficiaryIds.filter(id => this.people.some(p => p.id === id));
         }
         return this.people.map(p => p.id);
+      },
+      applyRate(currencyCode) {
+        const rate = parseFloat(this.rateInputs[currencyCode]);
+        if (!rate || rate <= 0) return;
+        this.$emit('set-currency-rate', currencyCode, rate);
       },
       renderChart() {
         if (!this.$refs.chartCanvas) return;
@@ -1650,10 +1734,12 @@
       tripCount: Number,
       entryCount: Number,
       expenseCount: Number,
+      currencies: Array,
+      baseCurrency: String,
       themes: Object,
       theme: String,
     },
-    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme'],
+    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency'],
   };
 
   // ==================== App ====================
@@ -1693,11 +1779,14 @@
         // Expense form
         showExpenseForm: false,
         editingExpense: null,
-        expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', beneficiaryIds: [], date: '', note: '' },
+        expenseForm: { amount: '', currency: 'CNY', exchangeRate: '', category: 'dining', paymentMethod: 'alipay', personId: '', beneficiaryIds: [], date: '', note: '' },
 
         // Person form
         showPersonForm: false,
         personForm: { name: '' },
+
+        // Base currency
+        baseCurrency: loadBaseCurrency(),
 
         // Theme
         activeTheme: loadTheme(),
@@ -1721,7 +1810,7 @@
       },
       sheetVisible() {
         return this.showTripForm || this.showEntryForm || this.showExpenseForm || this.showPersonForm;
-      }
+      },
     },
     watch: {
       trips: { deep: true, handler: 'persist' },
@@ -1733,6 +1822,9 @@
       showExpenseForm: 'updateScrollLock',
       showPersonForm: 'updateScrollLock',
       'dialog.show': 'updateScrollLock',
+      baseCurrency(newVal) {
+        saveBaseCurrency(newVal);
+      },
     },
     methods: {
       persist() {
@@ -1892,6 +1984,7 @@
           this.expenseForm = {
             amount: expense.amount || '',
             currency: expense.currency || 'CNY',
+            exchangeRate: expense.exchangeRate || '',
             category: expense.category || 'dining',
             paymentMethod: expense.paymentMethod || 'alipay',
             personId: expense.personId || '',
@@ -1905,6 +1998,7 @@
           this.expenseForm = {
             amount: '',
             currency: 'CNY',
+            exchangeRate: '',
             category: 'dining',
             paymentMethod: 'alipay',
             personId: firstPerson ? firstPerson.id : '',
@@ -1940,6 +2034,7 @@
         }
         const person = this.people.find(p => p.id === this.expenseForm.personId);
         const personName = person ? person.name : '未知';
+
         if (this.editingExpense) {
           Object.assign(this.editingExpense, {
             amount,
@@ -2011,6 +2106,20 @@
           if (idx > -1) this.people.splice(idx, 1);
           this.showToast('已移除');
         });
+      },
+
+      // ===== Exchange Rate Batch Set =====
+      setCurrencyRate(currencyCode, rate) {
+        const tripExpenses = this.expenses.filter(e => e.tripId === this.activeTripId && e.currency === currencyCode);
+        if (tripExpenses.length === 0) {
+          this.showToast('没有该币种的支出');
+          return;
+        }
+        tripExpenses.forEach(e => {
+          e.exchangeRate = rate;
+          e.baseAmount = e.amount * rate;
+        });
+        this.showToast('已应用汇率');
       },
 
       // ===== Theme =====
