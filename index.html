@@ -710,6 +710,7 @@
         :theme="activeTheme"
         @export="exportData"
         @import="importData($event)"
+        @share="shareData"
         @clear="confirmClear"
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
@@ -1064,10 +1065,17 @@
     <div class="card-title">💾 数据管理</div>
     <div class="settings-item">
       <div>
+        <div class="label">📤 分享数据</div>
+        <div class="desc">生成链接，发给别人直接导入</div>
+      </div>
+      <button class="btn btn-primary btn-sm" @click="$emit('share')">分享</button>
+    </div>
+    <div class="settings-item">
+      <div>
         <div class="label">导出数据</div>
         <div class="desc">备份所有数据为 JSON 文件</div>
       </div>
-      <button class="btn btn-primary btn-sm" @click="$emit('export')">导出</button>
+      <button class="btn btn-outline btn-sm" @click="$emit('export')">导出</button>
     </div>
     <div class="settings-item">
       <div>
@@ -1533,7 +1541,7 @@
       themes: Object,
       theme: String,
     },
-    emits: ['export', 'import', 'clear', 'delete-trip', 'switch-trip', 'change-theme'],
+    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme'],
   };
 
   // ==================== App ====================
@@ -1887,6 +1895,69 @@
         saveTheme(key);
       },
 
+      // ===== Share via URL =====
+      shareData() {
+        try {
+          const data = {
+            version: '1.0',
+            exportedAt: new Date().toISOString(),
+            trips: toRaw(this.trips),
+            entries: toRaw(this.entries),
+            people: toRaw(this.people),
+            expenses: toRaw(this.expenses),
+          };
+          const json = JSON.stringify(data);
+          // Compress with UTF-8 → base64
+          const compressed = btoa(unescape(encodeURIComponent(json)));
+          const url = window.location.href.split('#')[0] + '#data=' + compressed;
+          // Copy to clipboard
+          navigator.clipboard.writeText(url).then(() => {
+            this.showToast('✅ 链接已复制，发送给好友即可');
+          }).catch(() => {
+            // Fallback: show the URL in a prompt
+            prompt('复制下面的链接发送给好友：', url);
+          });
+        } catch (e) {
+          console.error('Share error:', e);
+          this.showToast('数据太大，请使用导出功能');
+        }
+      },
+
+      // ===== Check URL for shared data =====
+      checkSharedData() {
+        try {
+          const hash = window.location.hash;
+          if (!hash || !hash.startsWith('#data=')) return;
+          const compressed = hash.replace('#data=', '');
+          const json = decodeURIComponent(escape(atob(compressed)));
+          const data = JSON.parse(json);
+          if (!data.trips || !data.entries || !data.people || !data.expenses) {
+            this.showToast('分享数据无效');
+            return;
+          }
+          // Show dialog to import
+          this.confirm('检测到分享数据，是否导入？（将合并到当前数据中）', () => {
+            // Merge shared data with existing data
+            const existingTrips = new Set(this.trips.map(t => t.id));
+            const existingEntries = new Set(this.entries.map(e => e.id));
+            const existingPeople = new Set(this.people.map(p => p.id));
+            const existingExpenses = new Set(this.expenses.map(e => e.id));
+
+            data.trips.forEach(t => { if (!existingTrips.has(t.id)) { this.trips.push(t); } });
+            data.entries.forEach(e => { if (!existingEntries.has(e.id)) { this.entries.push(e); } });
+            data.people.forEach(p => { if (!existingPeople.has(p.id)) { this.people.push(p); } });
+            data.expenses.forEach(e => { if (!existingExpenses.has(e.id)) { this.expenses.push(e); } });
+
+            // Clear hash
+            history.replaceState(null, '', window.location.pathname);
+            this.showToast('✅ 导入成功');
+          });
+        } catch (e) {
+          console.error('Check shared data error:', e);
+          this.showToast('分享数据解析失败');
+        }
+      },
+
       // ===== Import / Export =====
       exportData() {
         try {
@@ -1957,6 +2028,8 @@
       if (this.trips.length > 0 && !this.trips.find(t => t.id === this.activeTripId)) {
         this.activeTripId = this.trips[0].id;
       }
+      // Check if opened from a shared link
+      this.checkSharedData();
     },
   });
 
