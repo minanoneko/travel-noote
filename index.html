@@ -485,11 +485,6 @@
     font-weight: 500;
     color: var(--color-primary);
     margin-bottom: 4px;
-    cursor: pointer;
-    display: inline-block;
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    padding: 2px 10px;
-    border-radius: 12px;
   }
   .tl-card .tl-content {
     font-size: 13px;
@@ -631,7 +626,6 @@
         v-if="activeTripId"
         :entries="filteredEntries"
         :people="filteredPeople"
-        :map-provider="mapProvider"
         @add="openEntryForm()"
         @edit="editEntry($event)"
         @delete="deleteEntry($event)">
@@ -700,7 +694,6 @@
         :expense-count="expenses.length"
         :currencies="currencies"
         :base-currency="baseCurrency"
-        :map-provider="mapProvider"
         :themes="themes"
         :theme="activeTheme"
         @export="exportData"
@@ -710,8 +703,7 @@
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
         @change-theme="onThemeChange($event)"
-        @change-base-currency="baseCurrency = $event"
-        @change-map-provider="mapProvider = $event">
+        @change-base-currency="baseCurrency = $event">
       </settings-view>
     </div>
   </div>
@@ -904,7 +896,7 @@
       <div class="tl-card">
         <div class="tl-body" @click="$emit('edit', entry)">
           <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
-          <div class="tl-location" @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
+          <div class="tl-location">📍 {{ entry.location }}</div>
           <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
         </div>
         <button class="tl-delete-btn" @click.stop="$emit('delete', entry)">✕</button>
@@ -1120,26 +1112,6 @@
       </button>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">🗺️ 地图偏好</div>
-    <div class="desc" style="font-size:13px;color:#888;margin-bottom:12px;">
-      点击计划里的地点，跳转到对应地图导航
-    </div>
-    <div class="chip-group">
-      <button class="chip" :class="{ active: mapProvider === 'auto' }"
-        @click="$emit('change-map-provider', 'auto')">
-        自动
-      </button>
-      <button class="chip" :class="{ active: mapProvider === 'google' }"
-        @click="$emit('change-map-provider', 'google')">
-        Google Maps
-      </button>
-      <button class="chip" :class="{ active: mapProvider === 'amap' }"
-        @click="$emit('change-map-provider', 'amap')">
-        高德地图
-      </button>
-    </div>
-  </div>
   <div class="card" v-if="trips.length > 0">
     <div class="card-title">🗺️ 管理旅行</div>
     <div class="list-item" v-for="t in trips" :key="t.id" style="padding:10px 0;">
@@ -1299,28 +1271,6 @@
     try { localStorage.setItem(BASE_CURRENCY_KEY, key); } catch (e) {}
   }
 
-  const MAP_PROVIDER_KEY = 'travel-journal-map-provider';
-
-  function detectMapProvider() {
-    const lang = (navigator.language || '').toLowerCase();
-    let tz = '';
-    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
-    if (lang === 'zh-cn' || tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi') return 'amap';
-    return 'google';
-  }
-
-  function loadMapProvider() {
-    try {
-      const saved = localStorage.getItem(MAP_PROVIDER_KEY);
-      if (saved === 'auto' || saved === 'amap' || saved === 'google') return saved;
-    } catch (e) {}
-    return 'auto';
-  }
-
-  function saveMapProvider(key) {
-    try { localStorage.setItem(MAP_PROVIDER_KEY, key); } catch (e) {}
-  }
-
   const COLORS = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D','#6D597A'];
 
   // ==================== Helpers ====================
@@ -1391,7 +1341,6 @@
     props: {
       entries: Array,
       people: Array,
-      mapProvider: { type: String, default: 'google' },
     },
     emits: ['add', 'edit', 'delete'],
     computed: {
@@ -1400,17 +1349,6 @@
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           return (a.createdAt || '').localeCompare(b.createdAt || '');
         });
-      }
-    },
-    methods: {
-      openMap(entry) {
-        const q = encodeURIComponent(entry.location);
-        const p = this.mapProvider === 'auto' ? detectMapProvider() : this.mapProvider;
-        if (p === 'amap') {
-          location.href = 'https://uri.amap.com/search?keyword=' + q;
-        } else {
-          location.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
-        }
       }
     }
   };
@@ -1725,11 +1663,10 @@ map[e.personId].count++;
       expenseCount: Number,
       currencies: Array,
       baseCurrency: String,
-      mapProvider: String,
       themes: Object,
       theme: String,
     },
-    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency', 'change-map-provider'],
+    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency'],
   };
 
   // ==================== App ====================
@@ -1778,9 +1715,6 @@ map[e.personId].count++;
         // Base currency
         baseCurrency: loadBaseCurrency(),
 
-        // Map provider
-        mapProvider: loadMapProvider(),
-
         // Theme
         activeTheme: loadTheme(),
         themes: THEMES,
@@ -1817,9 +1751,6 @@ map[e.personId].count++;
       'dialog.show': 'updateScrollLock',
       baseCurrency(newVal) {
         saveBaseCurrency(newVal);
-      },
-      mapProvider(newVal) {
-        saveMapProvider(newVal);
       },
     },
     methods: {
