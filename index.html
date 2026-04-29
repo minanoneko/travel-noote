@@ -1410,18 +1410,18 @@
           const start = Date.now();
           location.href = 'amapuri://search?keyword=' + q;
           setTimeout(function() {
-            if (Date.now() - start < 1200) {
+            if (Date.now() - start < 3000) {
               location.href = 'https://uri.amap.com/search?keyword=' + q;
             }
-          }, 800);
+          }, 2500);
         } else {
           const start = Date.now();
           location.href = 'comgooglemaps://?q=' + q;
           setTimeout(function() {
-            if (Date.now() - start < 1200) {
+            if (Date.now() - start < 3000) {
               location.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
             }
-          }, 800);
+          }, 2500);
         }
       }
     }
