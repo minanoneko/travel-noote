@@ -1406,10 +1406,23 @@
       openMap(entry) {
         const q = encodeURIComponent(entry.location);
         const p = this.mapProvider === 'auto' ? detectMapProvider() : this.mapProvider;
-        const url = p === 'amap'
-          ? 'https://uri.amap.com/search?keyword=' + q
-          : 'https://www.google.com/maps/search/?api=1&query=' + q;
-        window.open(url, '_blank');
+        if (p === 'amap') {
+          const start = Date.now();
+          location.href = 'amapuri://search?keyword=' + q;
+          setTimeout(function() {
+            if (Date.now() - start < 1200) {
+              location.href = 'https://uri.amap.com/search?keyword=' + q;
+            }
+          }, 800);
+        } else {
+          const start = Date.now();
+          location.href = 'comgooglemaps://?q=' + q;
+          setTimeout(function() {
+            if (Date.now() - start < 1200) {
+              location.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
+            }
+          }, 800);
+        }
       }
     }
   };
