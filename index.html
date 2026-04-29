@@ -1407,21 +1407,9 @@
         const q = encodeURIComponent(entry.location);
         const p = this.mapProvider === 'auto' ? detectMapProvider() : this.mapProvider;
         if (p === 'amap') {
-          const start = Date.now();
-          location.href = 'amapuri://search?keyword=' + q;
-          setTimeout(function() {
-            if (Date.now() - start < 3000) {
-              location.href = 'https://uri.amap.com/search?keyword=' + q;
-            }
-          }, 2500);
+          location.href = 'https://uri.amap.com/search?keyword=' + q;
         } else {
-          const start = Date.now();
-          location.href = 'comgooglemaps://?q=' + q;
-          setTimeout(function() {
-            if (Date.now() - start < 3000) {
-              location.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
-            }
-          }, 2500);
+          location.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
         }
       }
     }
