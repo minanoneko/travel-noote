@@ -1,10 +1,13 @@
 // 旅行手账 - Service Worker
-const CACHE_NAME = 'travel-journal-v1';
-const ASSETS = [
+var CACHE_NAME = 'travel-journal-v2';
+var ASSETS = [
   'index.html',
   'manifest.json',
   'vue.global.prod.js',
-  'chart.umd.min.js'
+  'chart.umd.min.js',
+  'js/utils.js',
+  'js/components.js',
+  'js/app.js'
 ];
 
 // 安装时缓存核心资源
