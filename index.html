@@ -459,60 +459,28 @@
     margin-bottom: 4px;
   }
 
-  /* ===== Swipe Container ===== */
-  .swipe-wrap {
-    position: relative;
-    overflow: hidden;
-    border-radius: 10px;
-  }
-  .swipe-wrap .swipe-delete-bg {
-    position: absolute;
-    top: 0; right: 0;
-    height: 100%;
-    width: 80px;
-    background: #e74c3c;
-    border-radius: 0 10px 10px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 500;
-    transition: opacity 0.2s;
-    pointer-events: none;
-  }
-  .swipe-wrap .swipe-delete-bg.active {
-    pointer-events: auto;
-  }
-  .swipe-wrap .swipe-content {
-    position: relative;
+  /* ===== Timeline Card ===== */
+  .tl-card {
     background: #fff;
     padding: 12px 14px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    transition: transform 0.25s ease-out;
-    z-index: 1;
-    touch-action: pan-y;
-    user-select: none;
+    border-radius: 10px;
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    cursor: pointer;
   }
-  .swipe-wrap .swipe-content.swiped {
-    transform: translateX(-80px);
-    transition: transform 0.2s ease-out;
-  }
-  .swipe-wrap .swipe-content .tl-body {
+  .tl-card .tl-body {
     flex: 1;
     min-width: 0;
+    cursor: pointer;
   }
-  .swipe-wrap .swipe-content .tl-time {
+  .tl-card .tl-time {
     font-size: 20px;
     font-weight: 700;
     color: #2D6A4F;
     margin-bottom: 2px;
   }
-  .swipe-wrap .swipe-content .tl-location {
+  .tl-card .tl-location {
     font-size: 14px;
     font-weight: 500;
     color: var(--color-primary);
@@ -523,21 +491,21 @@
     padding: 2px 10px;
     border-radius: 12px;
   }
-  .swipe-wrap .swipe-content .tl-content {
+  .tl-card .tl-content {
     font-size: 13px;
     color: #666;
     white-space: pre-line;
   }
-  .swipe-wrap .swipe-content .tl-edit-btn {
+  .tl-card .tl-delete-btn {
     flex-shrink: 0;
     padding: 4px 8px;
-    font-size: 14px;
-    color: #aaa;
+    font-size: 16px;
+    color: #ccc;
     transition: color 0.2s;
     -webkit-tap-highlight-color: transparent;
   }
-  .swipe-wrap .swipe-content .tl-edit-btn:active {
-    color: var(--color-primary);
+  .tl-card .tl-delete-btn:active {
+    color: #e74c3c;
   }
 
   /* ===== Stats ===== */
@@ -933,24 +901,13 @@
   <div v-else class="timeline">
     <div class="timeline-item" v-for="entry in sortedEntries" :key="entry.id">
       <div class="tl-date">{{ entry.date }}</div>
-      <div class="swipe-wrap"
-        @touchstart="onSwipeStart($event, entry)"
-        @touchmove="onSwipeMove($event, entry)"
-        @touchend="onSwipeEnd($event, entry)"
-        @mousedown="onSwipeStart($event, entry)"
-        @mousemove="onSwipeMove($event, entry)"
-        @mouseup="onSwipeEnd($event, entry)"
-        @mouseleave="onSwipeEnd($event, entry)">
-        <div class="swipe-delete-bg" :class="{ active: swipeStates[entry.id] }">
-          <span @click="confirmDelete(entry)" @touchend.stop style="padding:12px;display:inline-block;">🗑️ 删除</span>
+      <div class="tl-card">
+        <div class="tl-body" @click="$emit('edit', entry)">
+          <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
+          <div class="tl-location" @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
+          <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
         </div>
-        <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }" @click="onCardClick(entry)">
-          <div class="tl-body">
-            <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
-            <div class="tl-location" @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
-            <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
-          </div>
-        </div>
+        <button class="tl-delete-btn" @click.stop="$emit('delete', entry)">✕</button>
       </div>
     </div>
   </div>
@@ -1437,13 +1394,6 @@
       mapProvider: { type: String, default: 'google' },
     },
     emits: ['add', 'edit', 'delete'],
-    data() {
-      return {
-        swipeStates: {},
-        swipeStartX: 0,
-        swipingId: null,
-      };
-    },
     computed: {
       sortedEntries() {
         return [...this.entries].sort((a, b) => {
@@ -1453,55 +1403,13 @@
       }
     },
     methods: {
-      getClientX(e) {
-        return e.touches ? e.touches[0].clientX : e.clientX;
-      },
-      getEndClientX(e) {
-        return e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-      },
-      onSwipeStart(e, entry) {
-        this.swipeStartX = this.getClientX(e);
-        this.swipingId = entry.id;
-      },
-      onSwipeMove(e, entry) {
-        if (this.swipingId !== entry.id) return;
-        const clientX = this.getClientX(e);
-        if (!clientX) return;
-        const delta = this.swipeStartX - clientX;
-        if (delta > 40) {
-          this.swipeStates = { ...this.swipeStates, [entry.id]: true };
-        } else if (delta < 10) {
-          this.swipeStates = { ...this.swipeStates, [entry.id]: false };
-        }
-      },
-      onSwipeEnd(e, entry) {
-        if (this.swipingId !== entry.id) return;
-        const clientX = this.getEndClientX(e);
-        if (!clientX) { this.swipingId = null; return; }
-        const delta = this.swipeStartX - clientX;
-        if (delta > 60) {
-          this.swipeStates = { ...this.swipeStates, [entry.id]: true };
-        } else {
-          this.swipeStates = { ...this.swipeStates, [entry.id]: false };
-        }
-        this.swipingId = null;
-      },
-      onCardClick(entry) {
-        if (this.swipeStates[entry.id]) return;
-        this.$emit('edit', entry);
-      },
-      confirmDelete(entry) {
-        this.swipeStates = { ...this.swipeStates, [entry.id]: false };
-        this.swipingId = null;
-        this.$emit('delete', entry);
-      },
       openMap(entry) {
         const q = encodeURIComponent(entry.location);
         const p = this.mapProvider === 'auto' ? detectMapProvider() : this.mapProvider;
         const url = p === 'amap'
           ? 'https://uri.amap.com/search?keyword=' + q
           : 'https://www.google.com/maps/search/?api=1&query=' + q;
-        location.href = url;
+        window.open(url, '_blank');
       }
     }
   };
