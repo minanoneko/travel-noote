@@ -30,7 +30,7 @@ var app = Vue.createApp({
 
       showExpenseForm: false,
       editingExpense: null,
-      expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', beneficiaryIds: [], date: '', note: '' },
+      expenseForm: { amount: '', currency: 'CNY', category: 'dining', paymentMethod: 'alipay', personId: '', beneficiaryIds: [], date: '', note: '', splitMode: 'equal', shares: {} },
 
       showPersonForm: false,
       personForm: { name: '' },
@@ -43,6 +43,11 @@ var app = Vue.createApp({
       categories: CATEGORIES,
       paymentMethods: PAYMENT_METHODS,
       currencies: CURRENCIES,
+
+      showOtherCurrencies: false,
+
+      showQuickPersonInput: false,
+      quickPersonName: '',
     };
   },
   computed: {
@@ -60,6 +65,19 @@ var app = Vue.createApp({
     },
     sheetVisible: function() {
       return this.showTripForm || this.showEntryForm || this.showExpenseForm || this.showPersonForm;
+    },
+    commonCurrencies: function() {
+      return this.currencies.filter(function(c) { return isCommonCurrency(c.code); });
+    },
+    otherCurrencies: function() {
+      return this.currencies.filter(function(c) { return !isCommonCurrency(c.code); });
+    },
+    shareTotal: function() {
+      var total = 0;
+      for (var pid in this.expenseForm.shares) {
+        total += parseFloat(this.expenseForm.shares[pid]) || 0;
+      }
+      return total;
     },
   },
   watch: {
@@ -240,7 +258,10 @@ var app = Vue.createApp({
           beneficiaryIds: expense.beneficiaryIds ? [].concat(expense.beneficiaryIds) : this.filteredPeople.map(function(p) { return p.id; }),
           date: expense.date || today(),
           note: expense.note || '',
+          splitMode: expense.splitMode || 'equal',
+          shares: expense.shares ? Object.assign({}, expense.shares) : {},
         };
+        this.showOtherCurrencies = !isCommonCurrency(this.expenseForm.currency);
       } else {
         this.editingExpense = null;
         var firstPerson = this.filteredPeople[0];
@@ -250,10 +271,13 @@ var app = Vue.createApp({
           category: 'dining',
           paymentMethod: 'alipay',
           personId: firstPerson ? firstPerson.id : '',
-          beneficiaryIds: this.filteredPeople.map(function(p) { return p.id; }),
+          beneficiaryIds: [],
           date: today(),
           note: '',
+          splitMode: 'equal',
+          shares: {},
         };
+        this.showOtherCurrencies = false;
       }
       this.showExpenseForm = true;
     },
@@ -261,14 +285,63 @@ var app = Vue.createApp({
       var ids = this.expenseForm.beneficiaryIds;
       var idx = ids.indexOf(pid);
       if (idx > -1) {
-        if (ids.length > 1) ids.splice(idx, 1);
+        ids.splice(idx, 1);
+        // 从自定义分摊中移除该人
+        delete this.expenseForm.shares[pid];
       } else {
         ids.push(pid);
+        // 自定义模式下新增的人给一个默认金额
+        if (this.expenseForm.splitMode === 'custom') {
+          this.expenseForm.shares[pid] = '0';
+        }
       }
+    },
+    setSplitMode: function(mode) {
+      this.expenseForm.splitMode = mode;
+      if (mode === 'custom') {
+        var ids = this.expenseForm.beneficiaryIds;
+        var amount = parseFloat(this.expenseForm.amount) || 0;
+        var share = ids.length > 0 ? (amount / ids.length).toFixed(2) : '0';
+        var shares = {};
+        ids.forEach(function(id) { shares[id] = share; });
+        this.expenseForm.shares = shares;
+      } else {
+        this.expenseForm.shares = {};
+      }
+    },
+    getPersonName: function(pid) {
+      var p = this.people.find(function(x) { return x.id === pid; });
+      return p ? p.name : '';
     },
     closeExpenseForm: function() {
       this.showExpenseForm = false;
       this.editingExpense = null;
+      this.showOtherCurrencies = false;
+      this.quickPersonName = '';
+      this.showQuickPersonInput = false;
+      this.expenseForm.splitMode = 'equal';
+      this.expenseForm.shares = {};
+    },
+    addQuickPerson: function() {
+      var name = this.quickPersonName.trim();
+      if (!name) {
+        this.showToast('请输入姓名');
+        return;
+      }
+      var usedColors = this.filteredPeople.map(function(p) { return p.color; });
+      var color = COLORS.find(function(c) { return !usedColors.includes(c); }) || COLORS[this.filteredPeople.length % COLORS.length];
+      var person = {
+        id: genId(),
+        tripId: this.activeTripId,
+        name: name,
+        color: color,
+        createdAt: new Date().toISOString(),
+      };
+      this.people.push(person);
+      this.expenseForm.personId = person.id;
+      this.quickPersonName = '';
+      this.showQuickPersonInput = false;
+      this.showToast('已添加 ' + name);
     },
     saveExpense: function() {
       var self = this;
@@ -277,7 +350,7 @@ var app = Vue.createApp({
         self.showToast('请输入有效金额');
         return;
       }
-      if (!self.expenseForm.personId) {
+      if (self.filteredPeople.length > 0 && !self.expenseForm.personId) {
         self.showToast('请选择经手人');
         return;
       }
@@ -297,6 +370,8 @@ var app = Vue.createApp({
           note: this.expenseForm.note,
           exchangeRate: this.editingExpense.exchangeRate,
           baseAmount: this.editingExpense.exchangeRate != null ? amount * this.editingExpense.exchangeRate : void 0,
+          splitMode: this.expenseForm.splitMode,
+          shares: this.expenseForm.splitMode === 'custom' ? Object.assign({}, this.expenseForm.shares) : {},
         });
       } else {
         this.expenses.push({
@@ -312,6 +387,8 @@ var app = Vue.createApp({
           date: this.expenseForm.date,
           note: this.expenseForm.note,
           createdAt: new Date().toISOString(),
+          splitMode: this.expenseForm.splitMode,
+          shares: this.expenseForm.splitMode === 'custom' ? Object.assign({}, this.expenseForm.shares) : {},
         });
       }
       this.closeExpenseForm();

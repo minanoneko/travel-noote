@@ -790,9 +790,20 @@
         <div class="form-group">
           <label>币种</label>
           <div class="chip-group">
-            <button class="chip" v-for="c in currencies" :key="c.code"
+            <button class="chip" v-for="c in commonCurrencies" :key="c.code"
               :class="{ active: expenseForm.currency === c.code }"
               @click="expenseForm.currency = c.code">
+              {{ c.symbol }} {{ c.code }}
+            </button>
+            <button class="chip" :class="{ active: showOtherCurrencies }"
+              @click="showOtherCurrencies = !showOtherCurrencies">
+              {{ showOtherCurrencies ? '▲' : '▼' }} 其他
+            </button>
+          </div>
+          <div class="chip-group" style="margin-top:8px;" v-if="showOtherCurrencies">
+            <button class="chip" v-for="c in otherCurrencies" :key="c.code"
+              :class="{ active: expenseForm.currency === c.code }"
+              @click="expenseForm.currency = c.code; showOtherCurrencies = false">
               {{ c.symbol }} {{ c.code }}
             </button>
           </div>
@@ -817,7 +828,7 @@
             </button>
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" v-if="filteredPeople.length > 0">
           <label>经手人（谁付的）</label>
           <div class="chip-group">
             <button class="chip" v-for="p in filteredPeople" :key="p.id"
@@ -825,10 +836,16 @@
               @click="expenseForm.personId = p.id">
               {{ p.name }}
             </button>
+            <button class="chip" @click="showQuickPersonInput = true">+ 添加</button>
+          </div>
+          <div v-if="showQuickPersonInput" style="display:flex;gap:8px;margin-top:8px;">
+            <input id="quickPersonInput" class="form-control" v-model="quickPersonName" placeholder="输入姓名" style="flex:1;" @keyup.enter="addQuickPerson">
+            <button class="btn btn-primary btn-sm" @click="addQuickPerson">确定</button>
+            <button class="btn btn-ghost btn-sm" @click="showQuickPersonInput = false; quickPersonName = ''">取消</button>
           </div>
         </div>
-        <div class="form-group">
-          <label>受益人（这笔钱给谁花的）</label>
+        <div class="form-group" v-if="filteredPeople.length > 0">
+          <label>受益人 <span style="font-weight:400;color:#999;font-size:12px;">（选填，不选表示个人支出）</span></label>
           <div class="chip-group">
             <button class="chip" v-for="p in filteredPeople" :key="p.id"
               :class="{ active: expenseForm.beneficiaryIds.includes(p.id) }"
@@ -836,7 +853,32 @@
               {{ p.name }}
             </button>
           </div>
-          <div class="form-hint" v-if="expenseForm.beneficiaryIds.length > 1">{{ expenseForm.beneficiaryIds.length }} 人均摊，人均 {{ (expenseForm.amount / expenseForm.beneficiaryIds.length || 0).toFixed(2) }}</div>
+          <div class="form-hint" v-if="expenseForm.beneficiaryIds.length > 1 && expenseForm.splitMode === 'equal'">{{ expenseForm.beneficiaryIds.length }} 人均摊，人均 {{ (expenseForm.amount / expenseForm.beneficiaryIds.length || 0).toFixed(2) }}</div>
+          <div v-if="expenseForm.beneficiaryIds.length > 1" style="margin-top:10px;">
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <button class="chip" :class="{ active: expenseForm.splitMode === 'equal' }"
+                @click="setSplitMode('equal')">均衡分摊</button>
+              <button class="chip" :class="{ active: expenseForm.splitMode === 'custom' }"
+                @click="setSplitMode('custom')">自定义</button>
+            </div>
+            <div v-if="expenseForm.splitMode === 'custom'" style="padding:10px;background:#f8faf8;border-radius:8px;">
+              <div v-for="pid in expenseForm.beneficiaryIds" :key="pid"
+                style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="min-width:36px;font-size:13px;font-weight:500;">{{ getPersonName(pid) }}</span>
+                <input class="form-control" type="number" step="0.01" min="0"
+                  v-model="expenseForm.shares[pid]"
+                  style="flex:1;padding:6px 10px;font-size:13px;" placeholder="0.00">
+              </div>
+              <div style="font-size:12px;display:flex;gap:4px;margin-top:4px;">
+                <span>合计：</span>
+                <span :style="{ color: shareTotal.toFixed(2) !== (parseFloat(expenseForm.amount) || 0).toFixed(2) ? '#e74c3c' : '#2D6A4F' }">
+                  {{ shareTotal.toFixed(2) }}
+                </span>
+                <span style="color:#999;">/ {{ (parseFloat(expenseForm.amount) || 0).toFixed(2) }}</span>
+                <span v-if="shareTotal.toFixed(2) === (parseFloat(expenseForm.amount) || 0).toFixed(2)" style="color:#2D6A4F;">✓</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>日期</label>
@@ -913,9 +955,20 @@
     <div class="label">总支出</div>
     <div class="amount">{{ totalStr }}</div>
   </div>
-  <div v-if="expenses.length === 0" class="empty-state">
+  <div class="card" style="padding:10px 14px;margin-bottom:12px;" v-if="people.length > 1">
+    <div class="chip-group">
+      <button class="chip" :class="{ active: filterPersonId === '__all__' }"
+        @click="filterPersonId = '__all__'">📋 全部</button>
+      <button class="chip" v-for="p in people" :key="p.id"
+        :class="{ active: filterPersonId === p.id }"
+        @click="filterPersonId = p.id">
+        {{ p.name }}
+      </button>
+    </div>
+  </div>
+  <div v-if="displayExpenses.length === 0" class="empty-state">
     <div class="icon">💸</div>
-    <p>还没有消费记录</p>
+    <p>{{ filterPersonId !== '__all__' ? '没有符合条件的支出' : '还没有消费记录' }}</p>
     <button class="btn btn-primary mt-12" @click="$emit('add')">记一笔</button>
   </div>
   <div v-else>
@@ -1105,9 +1158,20 @@
       所有支出统一换算成本位币进行统计
     </div>
     <div class="chip-group">
-      <button class="chip" v-for="c in currencies" :key="c.code"
+      <button class="chip" v-for="c in commonCurrencies" :key="c.code"
         :class="{ active: baseCurrency === c.code }"
         @click="$emit('change-base-currency', c.code)">
+        {{ c.symbol }} {{ c.code }}
+      </button>
+      <button class="chip" :class="{ active: showOtherCurrencies }"
+        @click="showOtherCurrencies = !showOtherCurrencies">
+        {{ showOtherCurrencies ? '▲' : '▼' }} 其他
+      </button>
+    </div>
+    <div class="chip-group" style="margin-top:8px;" v-if="showOtherCurrencies">
+      <button class="chip" v-for="c in otherCurrencies" :key="c.code"
+        :class="{ active: baseCurrency === c.code }"
+        @click="$emit('change-base-currency', c.code); showOtherCurrencies = false">
         {{ c.symbol }} {{ c.code }}
       </button>
     </div>

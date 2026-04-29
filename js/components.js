@@ -27,9 +27,19 @@ var ExpensesView = {
     baseCurrency: String,
   },
   emits: ['add', 'edit', 'delete'],
+  data: function() {
+    return {
+      filterPersonId: '__all__',
+    };
+  },
   computed: {
+    displayExpenses: function() {
+      var self = this;
+      if (this.filterPersonId === '__all__') return this.expenses;
+      return this.expenses.filter(function(e) { return e.personId === self.filterPersonId; });
+    },
     total: function() {
-      return this.expenses.reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
+      return this.displayExpenses.reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
     },
     totalStr: function() {
       var mainCurrency = this.getMainCurrency();
@@ -37,7 +47,7 @@ var ExpensesView = {
     },
     sortedExpenses: function() {
       var self = this;
-      return [].concat(self.expenses).sort(function(a, b) {
+      return [].concat(self.displayExpenses).sort(function(a, b) {
         if (a.date !== b.date) return b.date.localeCompare(a.date);
         return (b.createdAt || '').localeCompare(a.createdAt || '');
       });
@@ -56,7 +66,7 @@ var ExpensesView = {
       return p ? p.name : '未知';
     },
     getMainCurrency: function() {
-      var codes = this.expenses.map(function(e) { return e.currency; }).filter(Boolean);
+      var codes = this.displayExpenses.map(function(e) { return e.currency; }).filter(Boolean);
       var freq = {};
       var max = 0, main = 'CNY';
       codes.forEach(function(c) { freq[c] = (freq[c] || 0) + 1; });
@@ -68,9 +78,9 @@ var ExpensesView = {
     },
     getBeneficiaryText: function(expense) {
       var self = this;
+      var ids = expense.beneficiaryIds;
+      if (!ids || ids.length === 0) return '';
       var allIds = self.people.map(function(p) { return p.id; });
-      var ids = expense.beneficiaryIds && expense.beneficiaryIds.length > 0
-        ? expense.beneficiaryIds : allIds;
       if (ids.length === allIds.length) return '';
       var names = ids.map(function(id) {
         var p = self.people.find(function(x) { return x.id === id; });
@@ -238,9 +248,16 @@ var StatsView = {
           balances[e.personId].totalPaid += amount;
         }
         var beneficiaryIds = self.getExpenseBeneficiaries(e);
-        var share = amount / Math.max(beneficiaryIds.length, 1);
+        var origAmount = parseFloat(e.amount) || 0;
         beneficiaryIds.forEach(function(id) {
           if (balances[id]) {
+            var share;
+            if (e.splitMode === 'custom' && e.shares && e.shares[id] != null) {
+              var raw = parseFloat(e.shares[id]) || 0;
+              share = origAmount > 0 ? raw * (amount / origAmount) : raw;
+            } else {
+              share = amount / Math.max(beneficiaryIds.length, 1);
+            }
             balances[id].totalShouldered += share;
           }
         });
@@ -285,10 +302,14 @@ var StatsView = {
   methods: {
     getExpenseBeneficiaries: function(expense) {
       var self = this;
-      if (expense.beneficiaryIds && expense.beneficiaryIds.length > 0) {
+      if (expense.beneficiaryIds != null && expense.beneficiaryIds.length > 0) {
         return expense.beneficiaryIds.filter(function(id) { return self.people.some(function(p) { return p.id === id; }); });
       }
-      return this.people.map(function(p) { return p.id; });
+      // null/undefined = old data, split among all; [] = personal expense
+      if (expense.beneficiaryIds == null) {
+        return self.people.map(function(p) { return p.id; });
+      }
+      return expense.personId ? [expense.personId] : [];
     },
     applyRate: function(currencyCode) {
       var rate = parseFloat(this.rateInputs[currencyCode]);
@@ -351,4 +372,17 @@ var SettingsView = {
     theme: String,
   },
   emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency'],
+  data: function() {
+    return {
+      showOtherCurrencies: false,
+    };
+  },
+  computed: {
+    commonCurrencies: function() {
+      return this.currencies.filter(function(c) { return isCommonCurrency(c.code); });
+    },
+    otherCurrencies: function() {
+      return this.currencies.filter(function(c) { return !isCommonCurrency(c.code); });
+    },
+  },
 };

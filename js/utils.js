@@ -80,6 +80,12 @@ function saveBaseCurrency(key) {
   try { localStorage.setItem(BASE_CURRENCY_KEY, key); } catch (e) {}
 }
 
+var COMMON_CURRENCY_CODES = ['CNY', 'USD', 'EUR', 'JPY', 'THB', 'HKD'];
+
+function isCommonCurrency(code) {
+  return COMMON_CURRENCY_CODES.indexOf(code) > -1;
+}
+
 var COLORS = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D','#6D597A'];
 
 // ==================== Helpers ====================
