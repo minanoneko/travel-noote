@@ -493,26 +493,46 @@
     z-index: 1;
     touch-action: pan-y;
     user-select: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
   }
   .swipe-wrap .swipe-content.swiped {
     transform: translateX(-80px);
     transition: transform 0.2s ease-out;
   }
+  .swipe-wrap .swipe-content .tl-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .swipe-wrap .swipe-content .tl-time {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2D6A4F;
+    margin-bottom: 2px;
+  }
   .swipe-wrap .swipe-content .tl-location {
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--color-primary);
     margin-bottom: 4px;
+    cursor: pointer;
+    display: inline-block;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    padding: 2px 10px;
+    border-radius: 12px;
   }
   .swipe-wrap .swipe-content .tl-content {
-    font-size: 14px;
-    color: #333;
+    font-size: 13px;
+    color: #666;
     white-space: pre-line;
   }
   .swipe-wrap .swipe-content .tl-edit-btn {
-    margin-top: 8px;
-    padding: 2px 8px;
-    font-size: 12px;
-    color: #888;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 14px;
+    color: #aaa;
     transition: color 0.2s;
     -webkit-tap-highlight-color: transparent;
   }
@@ -643,6 +663,7 @@
         v-if="activeTripId"
         :entries="filteredEntries"
         :people="filteredPeople"
+        :map-provider="mapProvider"
         @add="openEntryForm()"
         @edit="editEntry($event)"
         @delete="deleteEntry($event)">
@@ -711,6 +732,7 @@
         :expense-count="expenses.length"
         :currencies="currencies"
         :base-currency="baseCurrency"
+        :map-provider="mapProvider"
         :themes="themes"
         :theme="activeTheme"
         @export="exportData"
@@ -720,7 +742,8 @@
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
         @change-theme="onThemeChange($event)"
-        @change-base-currency="baseCurrency = $event">
+        @change-base-currency="baseCurrency = $event"
+        @change-map-provider="mapProvider = $event">
       </settings-view>
     </div>
   </div>
@@ -789,7 +812,7 @@
         </div>
         <div class="form-group">
           <label>详细内容</label>
-          <textarea class="form-control" v-model="entryForm.content" rows="4" placeholder="记录你的旅行见闻..."></textarea>
+          <textarea class="form-control" v-model="entryForm.content" rows="4" placeholder="写点什么...（可选）"></textarea>
         </div>
         <button class="btn btn-primary btn-block" @click="saveEntry">保存</button>
       </div>
@@ -909,7 +932,7 @@
   </div>
   <div v-else class="timeline">
     <div class="timeline-item" v-for="entry in sortedEntries" :key="entry.id">
-      <div class="tl-date">{{ entry.date }} {{ entry.time }}</div>
+      <div class="tl-date">{{ entry.date }}</div>
       <div class="swipe-wrap"
         @touchstart="onSwipeStart($event, entry)"
         @touchmove="onSwipeMove($event, entry)"
@@ -922,9 +945,11 @@
           <span @click="confirmDelete(entry)" @touchend.stop style="padding:12px;display:inline-block;">🗑️ 删除</span>
         </div>
         <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }">
-          <div class="tl-location" v-if="entry.location">📍 {{ entry.location }}</div>
-          <div class="tl-content">{{ entry.content }}</div>
-          <button class="tl-edit-btn" @click="$emit('edit', entry)">✏️ 编辑</button>
+          <div class="tl-body">
+            <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
+            <div class="tl-location" @mousedown.stop @mouseup.stop @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
+            <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1138,7 +1163,27 @@
       </button>
     </div>
   </div>
-  <div class="card" v-if="trips.length > 0">>
+  <div class="card">
+    <div class="card-title">🗺️ 地图偏好</div>
+    <div class="desc" style="font-size:13px;color:#888;margin-bottom:12px;">
+      点击计划里的地点，跳转到对应地图导航
+    </div>
+    <div class="chip-group">
+      <button class="chip" :class="{ active: mapProvider === 'auto' }"
+        @click="$emit('change-map-provider', 'auto')">
+        自动
+      </button>
+      <button class="chip" :class="{ active: mapProvider === 'google' }"
+        @click="$emit('change-map-provider', 'google')">
+        Google Maps
+      </button>
+      <button class="chip" :class="{ active: mapProvider === 'amap' }"
+        @click="$emit('change-map-provider', 'amap')">
+        高德地图
+      </button>
+    </div>
+  </div>
+  <div class="card" v-if="trips.length > 0">
     <div class="card-title">🗺️ 管理旅行</div>
     <div class="list-item" v-for="t in trips" :key="t.id" style="padding:10px 0;">
       <div class="body">
@@ -1197,7 +1242,7 @@
   <div class="card">
     <div class="card-title">ℹ️ 关于</div>
     <div style="font-size:13px;color:#666;">
-      旅行手账 v1.0.3<br>
+      旅行手账 v1.0.4<br>
       纯离线 · 数据仅存储在本地浏览器<br>
       支持 PWA 添加到桌面
     </div>
@@ -1297,6 +1342,28 @@
     try { localStorage.setItem(BASE_CURRENCY_KEY, key); } catch (e) {}
   }
 
+  const MAP_PROVIDER_KEY = 'travel-journal-map-provider';
+
+  function detectMapProvider() {
+    const lang = (navigator.language || '').toLowerCase();
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    if (lang === 'zh-cn' || tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi') return 'amap';
+    return 'google';
+  }
+
+  function loadMapProvider() {
+    try {
+      const saved = localStorage.getItem(MAP_PROVIDER_KEY);
+      if (saved === 'auto' || saved === 'amap' || saved === 'google') return saved;
+    } catch (e) {}
+    return 'auto';
+  }
+
+  function saveMapProvider(key) {
+    try { localStorage.setItem(MAP_PROVIDER_KEY, key); } catch (e) {}
+  }
+
   const COLORS = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D','#6D597A'];
 
   // ==================== Helpers ====================
@@ -1367,6 +1434,7 @@
     props: {
       entries: Array,
       people: Array,
+      mapProvider: { type: String, default: 'google' },
     },
     emits: ['add', 'edit', 'delete'],
     data() {
@@ -1379,8 +1447,8 @@
     computed: {
       sortedEntries() {
         return [...this.entries].sort((a, b) => {
-          if (a.date !== b.date) return b.date.localeCompare(a.date);
-          return (b.time || '').localeCompare(a.time || '');
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.createdAt || '').localeCompare(b.createdAt || '');
         });
       }
     },
@@ -1415,6 +1483,9 @@
           this.swipeStates = { ...this.swipeStates, [entry.id]: true };
         } else {
           this.swipeStates = { ...this.swipeStates, [entry.id]: false };
+          if (delta < 10) {
+            this.$emit("edit", entry);
+          }
         }
         this.swipingId = null;
       },
@@ -1422,6 +1493,14 @@
         this.swipeStates = { ...this.swipeStates, [entry.id]: false };
         this.swipingId = null;
         this.$emit('delete', entry);
+      },
+      openMap(entry) {
+        const q = encodeURIComponent(entry.location);
+        const p = this.mapProvider === 'auto' ? detectMapProvider() : this.mapProvider;
+        const url = p === 'amap'
+          ? 'https://uri.amap.com/search?keyword=' + q
+          : 'https://www.google.com/maps/search/?api=1&query=' + q;
+        location.href = url;
       }
     }
   };
@@ -1736,10 +1815,11 @@ map[e.personId].count++;
       expenseCount: Number,
       currencies: Array,
       baseCurrency: String,
+      mapProvider: String,
       themes: Object,
       theme: String,
     },
-    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency'],
+    emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency', 'change-map-provider'],
   };
 
   // ==================== App ====================
@@ -1788,6 +1868,9 @@ map[e.personId].count++;
         // Base currency
         baseCurrency: loadBaseCurrency(),
 
+        // Map provider
+        mapProvider: loadMapProvider(),
+
         // Theme
         activeTheme: loadTheme(),
         themes: THEMES,
@@ -1824,6 +1907,9 @@ map[e.personId].count++;
       'dialog.show': 'updateScrollLock',
       baseCurrency(newVal) {
         saveBaseCurrency(newVal);
+      },
+      mapProvider(newVal) {
+        saveMapProvider(newVal);
       },
     },
     methods: {
@@ -1934,7 +2020,7 @@ map[e.personId].count++;
           };
         } else {
           this.editingEntry = null;
-          this.entryForm = { date: today(), time: nowTime(), location: '', content: '' };
+          this.entryForm = { date: today(), time: '', location: '', content: '' };
         }
         this.showEntryForm = true;
       },
@@ -1943,8 +2029,8 @@ map[e.personId].count++;
         this.editingEntry = null;
       },
       saveEntry() {
-        if (!this.entryForm.content.trim()) {
-          this.showToast('请输入内容');
+        if (!this.entryForm.location.trim()) {
+          this.showToast('请填写地点');
           return;
         }
         if (this.editingEntry) {
