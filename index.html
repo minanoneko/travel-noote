@@ -947,7 +947,7 @@
         <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }">
           <div class="tl-body">
             <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
-            <div class="tl-location" @mousedown.stop @mouseup.stop @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
+            <div class="tl-location" @mousedown.stop @mouseup.stop @touchstart.stop @touchend.stop @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
             <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
           </div>
         </div>
