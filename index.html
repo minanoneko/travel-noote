@@ -944,10 +944,10 @@
         <div class="swipe-delete-bg" :class="{ active: swipeStates[entry.id] }">
           <span @click="confirmDelete(entry)" @touchend.stop style="padding:12px;display:inline-block;">🗑️ 删除</span>
         </div>
-        <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }">
+        <div class="swipe-content" :class="{ swiped: swipeStates[entry.id] }" @click="onCardClick(entry)">
           <div class="tl-body">
             <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
-            <div class="tl-location" @mousedown.stop @mouseup.stop @touchstart.stop @touchend.stop @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
+            <div class="tl-location" @click.stop="openMap(entry)">📍 {{ entry.location }}</div>
             <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
           </div>
         </div>
@@ -1483,11 +1483,12 @@
           this.swipeStates = { ...this.swipeStates, [entry.id]: true };
         } else {
           this.swipeStates = { ...this.swipeStates, [entry.id]: false };
-          if (delta < 10) {
-            this.$emit("edit", entry);
-          }
         }
         this.swipingId = null;
+      },
+      onCardClick(entry) {
+        if (this.swipeStates[entry.id]) return;
+        this.$emit('edit', entry);
       },
       confirmDelete(entry) {
         this.swipeStates = { ...this.swipeStates, [entry.id]: false };
