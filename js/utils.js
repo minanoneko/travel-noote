@@ -14,11 +14,11 @@ var CATEGORIES = [
 ];
 
 var PAYMENT_METHODS = [
-  { key: 'alipay', label: '支付宝', icon: '💳' },
-  { key: 'wechat', label: '微信支付', icon: '💚' },
-  { key: 'cash', label: '现金', icon: '💵' },
-  { key: 'bank', label: '银行卡', icon: '🏦' },
-  { key: 'applepay', label: 'Apple Pay', icon: '📱' },
+  { key: 'alipay',  label: '支付宝',   icon: '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px"><rect width="16" height="16" rx="3.5" fill="#1677FF"/><text x="8" y="12" text-anchor="middle" font-size="11" font-weight="bold" fill="white">支</text></svg>' },
+  { key: 'wechat',  label: '微信', icon: '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px"><rect width="16" height="16" rx="3.5" fill="#07C160"/><text x="8" y="12" text-anchor="middle" font-size="10" font-weight="bold" fill="white">微</text></svg>' },
+  { key: 'cash',    label: '现金',     icon: '💵' },
+  { key: 'bank',    label: '银行卡',   icon: '🏦' },
+  { key: 'applepay',label: 'Apple Pay',icon: '🍎' },
 ];
 
 var CURRENCIES = [

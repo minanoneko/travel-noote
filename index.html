@@ -824,7 +824,7 @@
             <button class="chip" v-for="pm in paymentMethods" :key="pm.key"
               :class="{ active: expenseForm.paymentMethod === pm.key }"
               @click="expenseForm.paymentMethod = pm.key">
-              {{ pm.icon }} {{ pm.label }}
+              <span v-html="pm.icon"></span> {{ pm.label }}
             </button>
           </div>
         </div>
