@@ -459,6 +459,49 @@
     margin-bottom: 4px;
   }
 
+  /* ===== Date Group Accordion ===== */
+  .date-group {
+    margin-bottom: 12px;
+  }
+  .date-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .date-header:active {
+    background: #f0f2f1;
+  }
+  .date-header-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2D6A4F;
+    flex: 1;
+  }
+  .date-header-count {
+    font-size: 12px;
+    color: #999;
+  }
+  .date-header-arrow {
+    font-size: 11px;
+    color: #aaa;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .date-header-arrow.expanded {
+    transform: rotate(90deg);
+  }
+  .date-body {
+    margin-top: 8px;
+    padding-left: 4px;
+  }
+
   /* ===== Timeline Card ===== */
   .tl-card {
     background: #fff;
@@ -933,15 +976,23 @@
     <button class="btn btn-primary mt-12" @click="$emit('add')">旅行计划</button>
   </div>
   <div v-else class="timeline">
-    <div class="timeline-item" v-for="entry in sortedEntries" :key="entry.id">
-      <div class="tl-date">{{ entry.date }}</div>
-      <div class="tl-card">
-        <div class="tl-body" @click="$emit('edit', entry)">
-          <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
-          <div class="tl-location">📍 {{ entry.location }}</div>
-          <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
+    <div class="date-group" v-for="group in groupedEntries" :key="group.date">
+      <div class="date-header" @click="toggleDate(group.date)">
+        <span class="date-header-text">{{ group.date }}</span>
+        <span class="date-header-count">{{ group.entries.length }}项</span>
+        <span class="date-header-arrow" :class="{ expanded: expandedDate === group.date }">▶</span>
+      </div>
+      <div class="date-body" v-show="expandedDate === group.date">
+        <div class="timeline-item" v-for="entry in group.entries" :key="entry.id">
+          <div class="tl-card">
+            <div class="tl-body" @click="$emit('edit', entry)">
+              <div class="tl-time" v-if="entry.time">{{ entry.time }}</div>
+              <div class="tl-location">📍 {{ entry.location }}</div>
+              <div class="tl-content" v-if="entry.content">{{ entry.content }}</div>
+            </div>
+            <button class="tl-delete-btn" @click.stop="$emit('delete', entry)">✕</button>
+          </div>
         </div>
-        <button class="tl-delete-btn" @click.stop="$emit('delete', entry)">✕</button>
       </div>
     </div>
   </div>

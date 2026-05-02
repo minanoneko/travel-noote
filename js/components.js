@@ -6,6 +6,11 @@ var JournalView = {
     people: Array,
   },
   emits: ['add', 'edit', 'delete'],
+  data: function() {
+    return {
+      expandedDate: null,
+    };
+  },
   computed: {
     sortedEntries: function() {
       var self = this;
@@ -13,6 +18,24 @@ var JournalView = {
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return (a.createdAt || '').localeCompare(b.createdAt || '');
       });
+    },
+    groupedEntries: function() {
+      var groups = [];
+      var self = this;
+      this.sortedEntries.forEach(function(entry) {
+        var last = groups[groups.length - 1];
+        if (last && last.date === entry.date) {
+          last.entries.push(entry);
+        } else {
+          groups.push({ date: entry.date, entries: [entry] });
+        }
+      });
+      return groups;
+    }
+  },
+  methods: {
+    toggleDate: function(date) {
+      this.expandedDate = this.expandedDate === date ? null : date;
     }
   }
 };
