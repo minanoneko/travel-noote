@@ -641,6 +641,96 @@
     color: #999;
   }
 
+  /* ===== Time Picker Wheel ===== */
+  .time-picker-wheels {
+    display: flex; gap: 16px; justify-content: center; margin-bottom: 8px;
+  }
+  .time-picker-col {
+    flex: 1; max-width: 130px; text-align: center;
+  }
+  .time-picker-col-label {
+    font-size: 11px; color: #999; margin-bottom: 6px; letter-spacing: 1px;
+  }
+  .time-picker-wheel-wrap {
+    position: relative; border-radius: 12px; overflow: hidden;
+  }
+  .time-picker-wheel {
+    height: 160px;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 60px 0;
+    background: #f7f7f8;
+    position: relative;
+    z-index: 1;
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 22%, black 35%, black 65%, transparent 78%, transparent 100%);
+    mask: linear-gradient(to bottom, transparent 0%, transparent 22%, black 35%, black 65%, transparent 78%, transparent 100%);
+  }
+  .time-picker-wheel::-webkit-scrollbar { display: none; }
+  .time-picker-highlight {
+    position: absolute; top: 50%; left: 8px; right: 8px; transform: translateY(-50%);
+    height: 40px; border-radius: 6px;
+    background: rgba(0,0,0,0.04);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .time-picker-item {
+    height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    scroll-snap-align: center;
+    font-size: 17px; color: #bbb; font-weight: 400;
+    user-select: none; -webkit-user-select: none;
+    cursor: pointer;
+    position: relative; z-index: 1;
+  }
+  .time-picker-item.active {
+    color: var(--color-primary); font-size: 22px; font-weight: 700;
+  }
+  .time-picker-body {
+    position: relative;
+    min-height: 160px;
+  }
+  .time-picker-manual-area {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .time-picker-manual-input {
+    width: 130px;
+    padding: 12px 8px;
+    border: 2px solid var(--color-primary);
+    border-radius: 10px;
+    background: #f7f7f8;
+    color: #333;
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+  }
+  .time-picker-manual-input::placeholder {
+    color: #ccc;
+    font-size: 20px;
+    letter-spacing: 0;
+  }
+  .time-picker-footer {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 8px;
+    padding: 0 4px;
+    min-height: 28px;
+  }
+  .time-picker-current {
+    font-size: 20px; font-weight: 600; color: #333;
+    letter-spacing: 1px;
+  }
+  .time-picker-switch {
+    font-size: 13px; color: var(--color-primary);
+    cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+  }
+
   /* ===== Responsive ===== */
   @media (min-width: 480px) {
     #app { border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; }
@@ -807,7 +897,7 @@
         </div>
         <div class="form-group">
           <label>时间</label>
-          <input class="form-control" type="time" v-model="entryForm.time">
+          <time-picker v-model="entryForm.time"></time-picker>
         </div>
         <div class="form-group">
           <label>地点 / 地址</label>
@@ -1290,6 +1380,55 @@
       纯离线 · 数据仅存储在本地浏览器<br>
       支持 PWA 添加到桌面
     </div>
+  </div>
+</div>
+</script>
+
+<script type="text/x-template" id="time-picker-template">
+<div class="time-picker">
+  <div class="time-picker-body">
+    <template v-if="!showManual">
+      <div class="time-picker-wheels">
+        <div class="time-picker-col">
+          <div class="time-picker-col-label">时</div>
+          <div class="time-picker-wheel-wrap">
+            <div class="time-picker-highlight"></div>
+            <div class="time-picker-wheel" ref="hourWheel" @scroll="onHourScroll">
+              <div class="time-picker-item"
+                   v-for="h in hours" :key="h"
+                   :class="{ active: h === selectedHour }"
+                   @click="selectHour(h)">
+                {{ h }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="time-picker-col">
+          <div class="time-picker-col-label">分</div>
+          <div class="time-picker-wheel-wrap">
+            <div class="time-picker-highlight"></div>
+            <div class="time-picker-wheel" ref="minuteWheel" @scroll="onMinuteScroll">
+              <div class="time-picker-item"
+                   v-for="m in minutes" :key="m"
+                   :class="{ active: m === selectedMinute }"
+                   @click="selectMinute(m)">
+                {{ m }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+    <div v-else class="time-picker-manual-area">
+      <input class="time-picker-manual-input"
+             type="text" v-model="manualInput"
+             placeholder="14:30"
+             @change="onManualChange">
+    </div>
+  </div>
+  <div class="time-picker-footer">
+    <span class="time-picker-current">{{ modelValue || '--:--' }}</span>
+    <span class="time-picker-switch" @click="toggleManual">{{ showManual ? '滚轮选择' : '手动输入' }}</span>
   </div>
 </div>
 </script>

@@ -409,3 +409,170 @@ var SettingsView = {
     },
   },
 };
+
+// ==================== Component: TimePicker ====================
+var TimePicker = {
+  template: '#time-picker-template',
+  props: {
+    modelValue: { type: String, default: '' }
+  },
+  emits: ['update:modelValue'],
+  data: function() {
+    var hours = [];
+    for (var i = 0; i < 24; i++) { hours.push(String(i).padStart(2, '0')); }
+    var minutes = [];
+    for (var i = 0; i < 60; i++) { minutes.push(String(i).padStart(2, '0')); }
+
+    var parsed = this.parseTime(this.modelValue);
+
+    return {
+      hours: hours,
+      minutes: minutes,
+      selectedHour: parsed.hour,
+      selectedMinute: parsed.minute,
+      manualInput: '',
+      showManual: false,
+    };
+  },
+  computed: {
+    displayTime: function() {
+      return this.selectedHour + ':' + this.selectedMinute;
+    }
+  },
+  watch: {
+    modelValue: function(val) {
+      var p = this.parseTime(val);
+      this.selectedHour = p.hour;
+      this.selectedMinute = p.minute;
+      var self = this;
+      this.$nextTick(function() {
+        self.scrollHourTo(p.hour, 'auto');
+        self.scrollMinuteTo(p.minute, 'auto');
+      });
+    }
+  },
+  methods: {
+    parseTime: function(val) {
+      if (!val) return { hour: '09', minute: '00' };
+      var parts = String(val).split(':');
+      var hour = String((parseInt(parts[0], 10) || 0) % 24).padStart(2, '0');
+      var minNum = parseInt(parts[1], 10) || 0;
+      return { hour: hour, minute: String(minNum % 60).padStart(2, '0') };
+    },
+
+    emitChange: function() {
+      var val = this.selectedHour + ':' + this.selectedMinute;
+      this.$emit('update:modelValue', val);
+    },
+
+    selectHour: function(hour) {
+      this.selectedHour = hour;
+      this.emitChange();
+      var self = this;
+      this.$nextTick(function() { self.scrollHourTo(hour); });
+    },
+    selectMinute: function(minute) {
+      this.selectedMinute = minute;
+      this.emitChange();
+      var self = this;
+      this.$nextTick(function() { self.scrollMinuteTo(minute); });
+    },
+
+    scrollHourTo: function(hour, behavior) {
+      var el = this.$refs.hourWheel;
+      if (!el) return;
+      var idx = this.hours.indexOf(hour);
+      if (idx >= 0) el.scrollTo({ top: idx * 40, behavior: behavior || 'smooth' });
+    },
+    scrollMinuteTo: function(minute, behavior) {
+      var el = this.$refs.minuteWheel;
+      if (!el) return;
+      var idx = this.minutes.indexOf(minute);
+      if (idx >= 0) el.scrollTo({ top: idx * 40, behavior: behavior || 'smooth' });
+    },
+
+    onHourScroll: function() {
+      this.debounceScroll('hour');
+    },
+    onMinuteScroll: function() {
+      this.debounceScroll('minute');
+    },
+    debounceScroll: function(type) {
+      var self = this;
+      var key = '_st' + type;
+      if (self[key]) clearTimeout(self[key]);
+      self[key] = setTimeout(function() {
+        var el = type === 'hour' ? self.$refs.hourWheel : self.$refs.minuteWheel;
+        if (!el) return;
+        var idx = Math.round(el.scrollTop / 40);
+        var list = type === 'hour' ? self.hours : self.minutes;
+        var max = type === 'hour' ? 24 : 60;
+        var cur = type === 'hour' ? self.selectedHour : self.selectedMinute;
+        if (idx >= 0 && idx < max && list[idx] !== cur) {
+          if (type === 'hour') self.selectedHour = list[idx];
+          else self.selectedMinute = list[idx];
+          self.emitChange();
+        }
+      }, 100);
+    },
+
+    toggleManual: function() {
+      this.showManual = !this.showManual;
+      if (this.showManual) {
+        this.manualInput = this.modelValue || this.displayTime;
+        var self = this;
+        this.$nextTick(function() {
+          var inp = self.$el.querySelector('.time-picker-manual-input');
+          if (inp) inp.focus();
+        });
+      }
+    },
+
+    onManualChange: function() {
+      var val = this.manualInput.trim();
+      var hour, minute;
+      if (val.indexOf(':') > -1) {
+        var match = val.match(/^(\d{1,2}):(\d{2})$/);
+        if (match) {
+          hour = match[1];
+          minute = match[2];
+        }
+      } else if (/^\d+$/.test(val)) {
+        if (val.length === 4) {
+          hour = val.slice(0, 2);
+          minute = val.slice(2);
+        } else if (val.length === 3) {
+          hour = val.slice(0, 1);
+          minute = val.slice(1);
+        } else if (val.length <= 2) {
+          hour = '0';
+          minute = val.padStart(2, '0');
+        } else {
+          hour = val.slice(0, 2);
+          minute = val.slice(2, 4);
+        }
+      }
+      if (hour !== undefined) {
+        var parsed = this.parseTime(hour + ':' + minute);
+        this.selectedHour = parsed.hour;
+        this.selectedMinute = parsed.minute;
+        this.emitChange();
+        this.showManual = false;
+        var self = this;
+        this.$nextTick(function() {
+          self.scrollHourTo(parsed.hour);
+          self.scrollMinuteTo(parsed.minute);
+        });
+      } else if (val) {
+        this.manualInput = this.modelValue || this.displayTime;
+      }
+    }
+  },
+  mounted: function() {
+    var self = this;
+    this.$nextTick(function() {
+      self.scrollHourTo(self.selectedHour, 'auto');
+      self.scrollMinuteTo(self.selectedMinute, 'auto');
+    });
+  }
+};
