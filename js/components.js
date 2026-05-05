@@ -423,7 +423,7 @@ var TimePicker = {
     var minutes = [];
     for (var i = 0; i < 60; i++) { minutes.push(String(i).padStart(2, '0')); }
 
-    var hour = '', minute = '';
+    var hour = '09', minute = '00';
     if (this.modelValue) {
       var parts = String(this.modelValue).split(':');
       hour = String((parseInt(parts[0], 10) || 0) % 24).padStart(2, '0');
@@ -439,6 +439,11 @@ var TimePicker = {
       showManual: false,
     };
   },
+  computed: {
+    displayTime: function() {
+      return this.selectedHour + ':' + this.selectedMinute;
+    }
+  },
   watch: {
     modelValue: function(val) {
       if (val) {
@@ -446,22 +451,73 @@ var TimePicker = {
         this.selectedHour = String((parseInt(parts[0], 10) || 0) % 24).padStart(2, '0');
         this.selectedMinute = String((parseInt(parts[1], 10) || 0) % 60).padStart(2, '0');
       } else {
-        this.selectedHour = '';
-        this.selectedMinute = '';
+        this.selectedHour = '09';
+        this.selectedMinute = '00';
       }
+      var self = this;
+      this.$nextTick(function() {
+        self.scrollToHour('auto');
+        self.scrollToMinute('auto');
+      });
     }
   },
   methods: {
     emitChange: function() {
-      if (this.selectedHour && this.selectedMinute) {
-        this.$emit('update:modelValue', this.selectedHour + ':' + this.selectedMinute);
-      }
+      this.$emit('update:modelValue', this.selectedHour + ':' + this.selectedMinute);
+    },
+
+    selectHour: function(h) {
+      this.selectedHour = h;
+      this.emitChange();
+      var self = this;
+      this.$nextTick(function() { self.scrollToHour(); });
+    },
+    selectMinute: function(m) {
+      this.selectedMinute = m;
+      this.emitChange();
+      var self = this;
+      this.$nextTick(function() { self.scrollToMinute(); });
+    },
+
+    scrollToHour: function(behavior) {
+      var el = this.$refs.hourWheel;
+      if (!el) return;
+      var idx = this.hours.indexOf(this.selectedHour);
+      if (idx >= 0) el.scrollTo({ top: idx * 40, behavior: behavior || 'smooth' });
+    },
+    scrollToMinute: function(behavior) {
+      var el = this.$refs.minuteWheel;
+      if (!el) return;
+      var idx = this.minutes.indexOf(this.selectedMinute);
+      if (idx >= 0) el.scrollTo({ top: idx * 40, behavior: behavior || 'smooth' });
+    },
+
+    onHourScroll: function() { this.debounceScroll('hour'); },
+    onMinuteScroll: function() { this.debounceScroll('minute'); },
+
+    debounceScroll: function(type) {
+      var self = this;
+      var key = '_st' + type;
+      if (self[key]) clearTimeout(self[key]);
+      self[key] = setTimeout(function() {
+        var el = type === 'hour' ? self.$refs.hourWheel : self.$refs.minuteWheel;
+        if (!el) return;
+        var idx = Math.round(el.scrollTop / 40);
+        var list = type === 'hour' ? self.hours : self.minutes;
+        var max = type === 'hour' ? 24 : 60;
+        var cur = type === 'hour' ? self.selectedHour : self.selectedMinute;
+        if (idx >= 0 && idx < max && list[idx] !== cur) {
+          if (type === 'hour') self.selectedHour = list[idx];
+          else self.selectedMinute = list[idx];
+          self.emitChange();
+        }
+      }, 100);
     },
 
     toggleManual: function() {
       this.showManual = !this.showManual;
       if (this.showManual) {
-        this.manualInput = this.modelValue || '';
+        this.manualInput = this.modelValue || this.displayTime;
         var self = this;
         this.$nextTick(function() {
           var inp = self.$el.querySelector('.time-picker-manual-input');
@@ -487,9 +543,21 @@ var TimePicker = {
         this.selectedMinute = String(parseInt(minute, 10) % 60).padStart(2, '0');
         this.emitChange();
         this.showManual = false;
+        var self = this;
+        this.$nextTick(function() {
+          self.scrollToHour();
+          self.scrollToMinute();
+        });
       } else if (val) {
-        this.manualInput = this.modelValue || '';
+        this.manualInput = this.modelValue || this.displayTime;
       }
     }
+  },
+  mounted: function() {
+    var self = this;
+    this.$nextTick(function() {
+      self.scrollToHour('auto');
+      self.scrollToMinute('auto');
+    });
   }
 };
