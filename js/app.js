@@ -6,7 +6,6 @@ var app = Vue.createApp({
     PeopleView: PeopleView,
     StatsView: StatsView,
     SettingsView: SettingsView,
-    TimePicker: TimePicker,
   },
   data: function() {
     var saved = loadData();
