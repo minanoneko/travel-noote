@@ -652,7 +652,19 @@
     font-size: 11px; color: #999; margin-bottom: 6px; letter-spacing: 1px;
   }
   .time-picker-wheel-wrap {
-    position: relative; border-radius: 12px; overflow: hidden;
+    position: relative; border-radius: 12px; background: #f7f7f8;
+  }
+  .time-picker-wheel-wrap::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 48px; z-index: 2; pointer-events: none;
+    background: linear-gradient(to bottom, #f7f7f8 0%, transparent 100%);
+    border-radius: 12px 12px 0 0;
+  }
+  .time-picker-wheel-wrap::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 48px; z-index: 2; pointer-events: none;
+    background: linear-gradient(to top, #f7f7f8 0%, transparent 100%);
+    border-radius: 0 0 12px 12px;
   }
   .time-picker-wheel {
     height: 160px;
@@ -661,20 +673,9 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding: 60px 0;
-    background: #f7f7f8;
-    position: relative;
-    z-index: 1;
-    -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 22%, black 35%, black 65%, transparent 78%, transparent 100%);
-    mask: linear-gradient(to bottom, transparent 0%, transparent 22%, black 35%, black 65%, transparent 78%, transparent 100%);
+    background: transparent;
   }
   .time-picker-wheel::-webkit-scrollbar { display: none; }
-  .time-picker-highlight {
-    position: absolute; top: 50%; left: 8px; right: 8px; transform: translateY(-50%);
-    height: 40px; border-radius: 6px;
-    background: rgba(0,0,0,0.04);
-    pointer-events: none;
-    z-index: 0;
-  }
   .time-picker-item {
     height: 40px;
     display: flex; align-items: center; justify-content: center;
@@ -682,7 +683,6 @@
     font-size: 17px; color: #bbb; font-weight: 400;
     user-select: none; -webkit-user-select: none;
     cursor: pointer;
-    position: relative; z-index: 1;
   }
   .time-picker-item.active {
     color: var(--color-primary); font-size: 22px; font-weight: 700;
@@ -1392,7 +1392,6 @@
         <div class="time-picker-col">
           <div class="time-picker-col-label">时</div>
           <div class="time-picker-wheel-wrap">
-            <div class="time-picker-highlight"></div>
             <div class="time-picker-wheel" ref="hourWheel" @scroll="onHourScroll">
               <div class="time-picker-item"
                    v-for="h in hours" :key="h"
@@ -1406,7 +1405,6 @@
         <div class="time-picker-col">
           <div class="time-picker-col-label">分</div>
           <div class="time-picker-wheel-wrap">
-            <div class="time-picker-highlight"></div>
             <div class="time-picker-wheel" ref="minuteWheel" @scroll="onMinuteScroll">
               <div class="time-picker-item"
                    v-for="m in minutes" :key="m"
