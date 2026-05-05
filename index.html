@@ -643,52 +643,34 @@
 
   /* ===== Time Picker Wheel ===== */
   .time-picker-wheels {
-    display: flex; gap: 16px; justify-content: center; margin-bottom: 8px;
+    display: flex; gap: 12px; justify-content: center; margin-bottom: 4px;
   }
   .time-picker-col {
-    flex: 1; max-width: 130px; text-align: center;
+    flex: 1; max-width: 120px; text-align: center;
   }
   .time-picker-col-label {
-    font-size: 11px; color: #999; margin-bottom: 6px; letter-spacing: 1px;
-  }
-  .time-picker-wheel-wrap {
-    position: relative; border-radius: 12px; background: #f7f7f8;
-  }
-  .time-picker-wheel-wrap::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 48px; z-index: 2; pointer-events: none;
-    background: linear-gradient(to bottom, #f7f7f8 0%, transparent 100%);
-    border-radius: 12px 12px 0 0;
-  }
-  .time-picker-wheel-wrap::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-    height: 48px; z-index: 2; pointer-events: none;
-    background: linear-gradient(to top, #f7f7f8 0%, transparent 100%);
-    border-radius: 0 0 12px 12px;
+    font-size: 11px; color: #999; margin-bottom: 4px; letter-spacing: 1px;
   }
   .time-picker-wheel {
     height: 160px;
     overflow-y: auto;
-    scroll-snap-type: y mandatory;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
     padding: 60px 0;
-    background: transparent;
+    background: #f7f7f8;
+    border-radius: 10px;
+    border: 1px solid #e8e8e8;
   }
   .time-picker-wheel::-webkit-scrollbar { display: none; }
   .time-picker-item {
     height: 40px;
     display: flex; align-items: center; justify-content: center;
-    scroll-snap-align: center;
-    font-size: 17px; color: #bbb; font-weight: 400;
+    font-size: 17px; color: #999; font-weight: 400;
     user-select: none; -webkit-user-select: none;
-    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
   .time-picker-item.active {
-    color: var(--color-primary); font-size: 22px; font-weight: 700;
+    color: var(--color-primary); font-size: 21px; font-weight: 700;
   }
   .time-picker-body {
-    position: relative;
     min-height: 160px;
   }
   .time-picker-manual-area {
@@ -722,7 +704,7 @@
     min-height: 28px;
   }
   .time-picker-current {
-    font-size: 20px; font-weight: 600; color: #333;
+    font-size: 18px; font-weight: 600; color: #333;
     letter-spacing: 1px;
   }
   .time-picker-switch {
@@ -1387,37 +1369,31 @@
 <script type="text/x-template" id="time-picker-template">
 <div class="time-picker">
   <div class="time-picker-body">
-    <template v-if="!showManual">
-      <div class="time-picker-wheels">
-        <div class="time-picker-col">
-          <div class="time-picker-col-label">时</div>
-          <div class="time-picker-wheel-wrap">
-            <div class="time-picker-wheel" ref="hourWheel" @scroll="onHourScroll">
-              <div class="time-picker-item"
-                   v-for="h in hours" :key="h"
-                   :class="{ active: h === selectedHour }"
-                   @click="selectHour(h)">
-                {{ h }}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="time-picker-col">
-          <div class="time-picker-col-label">分</div>
-          <div class="time-picker-wheel-wrap">
-            <div class="time-picker-wheel" ref="minuteWheel" @scroll="onMinuteScroll">
-              <div class="time-picker-item"
-                   v-for="m in minutes" :key="m"
-                   :class="{ active: m === selectedMinute }"
-                   @click="selectMinute(m)">
-                {{ m }}
-              </div>
-            </div>
+    <div class="time-picker-wheels" v-show="!showManual">
+      <div class="time-picker-col">
+        <div class="time-picker-col-label">时</div>
+        <div class="time-picker-wheel" ref="hourWheel" @scroll="onHourScroll">
+          <div class="time-picker-item"
+               v-for="h in hours" :key="h"
+               :class="{ active: h === selectedHour }"
+               @click="selectHour(h)">
+            {{ h }}
           </div>
         </div>
       </div>
-    </template>
-    <div v-else class="time-picker-manual-area">
+      <div class="time-picker-col">
+        <div class="time-picker-col-label">分</div>
+        <div class="time-picker-wheel" ref="minuteWheel" @scroll="onMinuteScroll">
+          <div class="time-picker-item"
+               v-for="m in minutes" :key="m"
+               :class="{ active: m === selectedMinute }"
+               @click="selectMinute(m)">
+            {{ m }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="time-picker-manual-area" v-show="showManual">
       <input class="time-picker-manual-input"
              type="text" v-model="manualInput"
              placeholder="14:30"
