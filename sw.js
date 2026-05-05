@@ -1,5 +1,5 @@
 // 旅行手账 - Service Worker
-var CACHE_NAME = 'travel-journal-v4';
+var CACHE_NAME = 'travel-journal-v5';
 var ASSETS = [
   'index.html',
   'manifest.json',

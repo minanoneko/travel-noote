@@ -641,65 +641,51 @@
     color: #999;
   }
 
-  /* ===== Time Picker Wheel ===== */
-  .time-picker-wheels {
-    display: flex; gap: 12px; justify-content: center; margin-bottom: 4px;
+  /* ===== Time Picker ===== */
+  .time-picker-selects {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .time-picker-col {
-    flex: 1; max-width: 120px; text-align: center;
-  }
-  .time-picker-col-label {
-    font-size: 11px; color: #999; margin-bottom: 4px; letter-spacing: 1px;
-  }
-  .time-picker-wheel {
-    height: 160px;
-    overflow-y: auto;
-    padding: 60px 0;
-    background: #f7f7f8;
+  .time-picker-select {
+    flex: 1; max-width: 110px;
+    padding: 12px 4px;
+    border: 1px solid #ddd;
     border-radius: 10px;
-    border: 1px solid #e8e8e8;
+    background: #f7f7f8;
+    font-size: 22px; font-weight: 600;
+    text-align: center; text-align-last: center;
+    color: #333;
+    appearance: auto; -webkit-appearance: auto;
   }
-  .time-picker-wheel::-webkit-scrollbar { display: none; }
-  .time-picker-item {
-    height: 40px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 17px; color: #999; font-weight: 400;
-    user-select: none; -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
+  .time-picker-select:focus {
+    border-color: var(--color-primary);
   }
-  .time-picker-item.active {
-    color: var(--color-primary); font-size: 21px; font-weight: 700;
+  .time-picker-sep {
+    font-size: 24px; font-weight: 600; color: #333;
   }
   .time-picker-body {
-    min-height: 160px;
+    min-height: 52px;
   }
   .time-picker-manual-area {
-    height: 160px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
   }
   .time-picker-manual-input {
-    width: 130px;
+    width: 160px;
     padding: 12px 8px;
     border: 2px solid var(--color-primary);
     border-radius: 10px;
     background: #f7f7f8;
     color: #333;
-    font-size: 32px;
-    font-weight: 600;
+    font-size: 24px; font-weight: 600;
     text-align: center;
     letter-spacing: 2px;
     outline: none;
   }
   .time-picker-manual-input::placeholder {
-    color: #ccc;
-    font-size: 20px;
-    letter-spacing: 0;
+    color: #ccc; font-weight: 400; font-size: 16px; letter-spacing: 0;
   }
   .time-picker-footer {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin-top: 8px;
+    margin-top: 10px;
     padding: 0 4px;
     min-height: 28px;
   }
@@ -1369,29 +1355,16 @@
 <script type="text/x-template" id="time-picker-template">
 <div class="time-picker">
   <div class="time-picker-body">
-    <div class="time-picker-wheels" v-show="!showManual">
-      <div class="time-picker-col">
-        <div class="time-picker-col-label">时</div>
-        <div class="time-picker-wheel" ref="hourWheel" @scroll="onHourScroll">
-          <div class="time-picker-item"
-               v-for="h in hours" :key="h"
-               :class="{ active: h === selectedHour }"
-               @click="selectHour(h)">
-            {{ h }}
-          </div>
-        </div>
-      </div>
-      <div class="time-picker-col">
-        <div class="time-picker-col-label">分</div>
-        <div class="time-picker-wheel" ref="minuteWheel" @scroll="onMinuteScroll">
-          <div class="time-picker-item"
-               v-for="m in minutes" :key="m"
-               :class="{ active: m === selectedMinute }"
-               @click="selectMinute(m)">
-            {{ m }}
-          </div>
-        </div>
-      </div>
+    <div class="time-picker-selects" v-show="!showManual">
+      <select v-model="selectedHour" @change="emitChange" class="time-picker-select">
+        <option value="" disabled>时</option>
+        <option v-for="h in hours" :key="h" :value="h">{{ h }} 时</option>
+      </select>
+      <span class="time-picker-sep">:</span>
+      <select v-model="selectedMinute" @change="emitChange" class="time-picker-select">
+        <option value="" disabled>分</option>
+        <option v-for="m in minutes" :key="m" :value="m">{{ m }} 分</option>
+      </select>
     </div>
     <div class="time-picker-manual-area" v-show="showManual">
       <input class="time-picker-manual-input"
@@ -1402,7 +1375,7 @@
   </div>
   <div class="time-picker-footer">
     <span class="time-picker-current">{{ modelValue || '--:--' }}</span>
-    <span class="time-picker-switch" @click="toggleManual">{{ showManual ? '滚轮选择' : '手动输入' }}</span>
+    <span class="time-picker-switch" @click="toggleManual">{{ showManual ? '选择器' : '手动输入' }}</span>
   </div>
 </div>
 </script>
