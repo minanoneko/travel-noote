@@ -461,20 +461,35 @@ var app = Vue.createApp({
     },
 
     // ===== Share via URL =====
-    shareData: function() {
+    shareData: function(scope) {
       var self = this;
       try {
-        var data = {
-          version: '1.0',
-          exportedAt: new Date().toISOString(),
-          trips: Vue.toRaw(self.trips),
-          entries: Vue.toRaw(self.entries),
-          people: Vue.toRaw(self.people),
-          expenses: Vue.toRaw(self.expenses),
-        };
+        var data;
+        if (scope === 'current') {
+          var tripId = self.activeTripId;
+          data = {
+            version: '2.0',
+            scope: 'current',
+            exportedAt: new Date().toISOString(),
+            trips: Vue.toRaw(self.trips.filter(function(t) { return t.id === tripId; })),
+            entries: Vue.toRaw(self.entries.filter(function(e) { return e.tripId === tripId; })),
+            people: Vue.toRaw(self.people.filter(function(p) { return p.tripId === tripId; })),
+            expenses: Vue.toRaw(self.expenses.filter(function(e) { return e.tripId === tripId; })),
+          };
+        } else {
+          data = {
+            version: '2.0',
+            scope: 'all',
+            exportedAt: new Date().toISOString(),
+            trips: Vue.toRaw(self.trips),
+            entries: Vue.toRaw(self.entries),
+            people: Vue.toRaw(self.people),
+            expenses: Vue.toRaw(self.expenses),
+          };
+        }
         var json = JSON.stringify(data);
-        var compressed = btoa(unescape(encodeURIComponent(json)));
-        var url = window.location.href.split('#')[0] + '#data=' + compressed;
+        var compressed = LZString.compressToBase64(json);
+        var url = window.location.href.split('#')[0] + '#data=v2.' + compressed;
         navigator.clipboard.writeText(url).then(function() {
           self.showToast('✅ 链接已复制，发送给好友即可');
         }).catch(function() {
@@ -492,8 +507,13 @@ var app = Vue.createApp({
       try {
         var hash = window.location.hash;
         if (!hash || !hash.startsWith('#data=')) return;
-        var compressed = hash.replace('#data=', '');
-        var json = decodeURIComponent(escape(atob(compressed)));
+        var raw = hash.replace('#data=', '');
+        var json;
+        if (raw.startsWith('v2.')) {
+          json = LZString.decompressFromBase64(raw.substring(3));
+        } else {
+          json = decodeURIComponent(escape(atob(raw)));
+        }
         var data = JSON.parse(json);
         if (!data.trips || !data.entries || !data.people || !data.expenses) {
           self.showToast('分享数据无效');

@@ -741,7 +741,7 @@
         :theme="activeTheme"
         @export="exportData"
         @import="importData($event)"
-        @share="shareData"
+        @share="shareData($event)"
         @clear="confirmClear"
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
@@ -1246,7 +1246,10 @@
         <div class="label">📤 分享数据</div>
         <div class="desc">生成链接，发给别人直接导入</div>
       </div>
-      <button class="btn btn-primary btn-sm" @click="$emit('share')">分享</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" @click="$emit('share', 'current')">当前</button>
+        <button class="btn btn-primary btn-sm" @click="$emit('share', 'all')">全部</button>
+      </div>
     </div>
     <div class="settings-item">
       <div>
@@ -1294,9 +1297,10 @@
 </div>
 </script>
 
-<!-- ====== Vue 3 & Chart.js ====== -->
+<!-- ====== Libraries ====== -->
 <script src="vue.global.prod.js"></script>
 <script src="chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
 <!-- ====== Main App ====== -->
 <script src="js/utils.js"></script>
