@@ -78,7 +78,10 @@ var ExpensesView = {
       this.displayExpenses.forEach(function(e) {
         if (e.currency === self.baseCurrency) return;
         var code = e.currency;
-        if (!map[code]) map[code] = { code: code, symbol: getCurrencyByCode(code).symbol, total: 0 };
+        if (!code) return;
+        var cur = getCurrencyByCode(code);
+        if (!cur) return;
+        if (!map[code]) map[code] = { code: code, symbol: cur.symbol, total: 0 };
         map[code].total += parseFloat(e.amount) || 0;
       });
       var result = [];
