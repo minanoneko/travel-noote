@@ -460,6 +460,26 @@ var app = Vue.createApp({
       }
     },
 
+    // ===== Reset/Clean Exchange Rates =====
+    cleanExchangeRates: function() {
+      var self = this;
+      self.expenses.forEach(function(e) {
+        e.exchangeRate = void 0;
+        e.baseAmount = void 0;
+      });
+      Object.keys(self.exchangeRates).forEach(function(code) {
+        var rate = self.exchangeRates[code];
+        var tripExpenses = self.expenses.filter(function(e) {
+          return e.tripId === self.activeTripId && e.currency === code;
+        });
+        tripExpenses.forEach(function(e) {
+          e.exchangeRate = rate;
+          e.baseAmount = (parseFloat(e.amount) || 0) * rate;
+        });
+      });
+      self.showToast('已重新计算全部汇率');
+    },
+
     // ===== Theme =====
     onThemeChange: function(key) {
       this.activeTheme = key;

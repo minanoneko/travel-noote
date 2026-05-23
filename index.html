@@ -736,7 +736,8 @@
         :categories="categories"
         :base-currency="baseCurrency"
         :exchange-rates="exchangeRates"
-        @set-currency-rate="setCurrencyRate">
+        @set-currency-rate="setCurrencyRate"
+        @clean-exchange-rates="cleanExchangeRates">
       </stats-view>
       <div v-else class="empty-state">
         <div class="icon">📊</div>
@@ -1121,6 +1122,8 @@
           </button>
         </div>
       </div>
+      <button v-if="foreignCurrencies.length > 0" class="btn btn-outline btn-sm" style="margin-top:8px;"
+        @click="$emit('clean-exchange-rates')">🔄 重新计算全部汇率</button>
     </div>
 
     <!-- Unconverted warning -->
@@ -1296,8 +1299,8 @@
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
 <!-- ====== Main App ====== -->
-<script src="js/utils.js?v=105"></script>
-<script src="js/components.js?v=105"></script>
-<script src="js/app.js?v=105"></script>
+<script src="js/utils.js?v=106"></script>
+<script src="js/components.js?v=106"></script>
+<script src="js/app.js?v=106"></script>
 </body>
 </html>

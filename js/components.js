@@ -148,7 +148,7 @@ var StatsView = {
     baseCurrency: String,
     exchangeRates: Object,
   },
-  emits: ['set-currency-rate'],
+  emits: ['set-currency-rate', 'clean-exchange-rates'],
   data: function() {
     return {
       chartInstance: null,
