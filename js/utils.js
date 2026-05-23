@@ -65,21 +65,6 @@ function applyTheme(key) {
   if (meta) meta.setAttribute('content', theme.primary);
 }
 
-// ==================== Base Currency ====================
-var BASE_CURRENCY_KEY = 'travel-journal-base-currency';
-
-function loadBaseCurrency() {
-  try {
-    var saved = localStorage.getItem(BASE_CURRENCY_KEY);
-    if (saved && CURRENCIES.some(function(c) { return c.code === saved; })) return saved;
-  } catch (e) {}
-  return 'CNY';
-}
-
-function saveBaseCurrency(key) {
-  try { localStorage.setItem(BASE_CURRENCY_KEY, key); } catch (e) {}
-}
-
 var COMMON_CURRENCY_CODES = ['CNY', 'USD', 'EUR', 'JPY', 'THB', 'HKD'];
 
 function isCommonCurrency(code) {

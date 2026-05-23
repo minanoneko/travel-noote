@@ -35,7 +35,7 @@ var app = Vue.createApp({
       showPersonForm: false,
       personForm: { name: '' },
 
-      baseCurrency: loadBaseCurrency(),
+      baseCurrency: 'CNY',
 
       activeTheme: loadTheme(),
       themes: THEMES,
@@ -90,9 +90,6 @@ var app = Vue.createApp({
     showExpenseForm: 'updateScrollLock',
     showPersonForm: 'updateScrollLock',
     'dialog.show': 'updateScrollLock',
-    baseCurrency: function(newVal) {
-      saveBaseCurrency(newVal);
-    },
   },
   methods: {
     persist: function() {

@@ -61,12 +61,27 @@ var ExpensesView = {
       if (this.filterPersonId === '__all__') return this.expenses;
       return this.expenses.filter(function(e) { return e.personId === self.filterPersonId; });
     },
-    total: function() {
-      return this.displayExpenses.reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
+    baseSymbol: function() {
+      var c = getCurrencyByCode(this.baseCurrency);
+      return c ? c.symbol : '¥';
     },
-    totalStr: function() {
-      var mainCurrency = this.getMainCurrency();
-      return mainCurrency.symbol + this.total.toFixed(2);
+    baseTotal: function() {
+      var self = this;
+      return this.displayExpenses.reduce(function(sum, e) {
+        if (e.currency === self.baseCurrency) return sum + (parseFloat(e.amount) || 0);
+        return sum;
+      }, 0);
+    },
+    foreignTotals: function() {
+      var self = this;
+      var map = {};
+      this.displayExpenses.forEach(function(e) {
+        if (e.currency === self.baseCurrency) return;
+        var code = e.currency;
+        if (!map[code]) map[code] = { code: code, symbol: getCurrencyByCode(code).symbol, total: 0 };
+        map[code].total += parseFloat(e.amount) || 0;
+      });
+      return Object.values(map).sort(function(a, b) { return b.total - a.total; });
     },
     sortedExpenses: function() {
       var self = this;
@@ -78,6 +93,7 @@ var ExpensesView = {
   },
   methods: {
     getCategoryLabel: function(key) { return getCategoryByKey(key).label; },
+    getCategoryIcon: function(key) { return getCategoryByKey(key).icon; },
     getPaymentLabel: function(key) { return getPaymentByKey(key).label; },
     getCurrencySymbol: function(code) { return getCurrencyByCode(code).symbol; },
     getPersonColor: function(personId) {
@@ -87,17 +103,6 @@ var ExpensesView = {
     getPersonName: function(personId) {
       var p = this.people.find(function(x) { return x.id === personId; });
       return p ? p.name : '未知';
-    },
-    getMainCurrency: function() {
-      var codes = this.displayExpenses.map(function(e) { return e.currency; }).filter(Boolean);
-      var freq = {};
-      var max = 0, main = 'CNY';
-      codes.forEach(function(c) { freq[c] = (freq[c] || 0) + 1; });
-      Object.entries(freq).forEach(function(entry) {
-        var c = entry[0], n = entry[1];
-        if (n > max) { max = n; main = c; }
-      });
-      return getCurrencyByCode(main);
     },
     getBeneficiaryText: function(expense) {
       var self = this;
@@ -390,22 +395,8 @@ var SettingsView = {
     entryCount: Number,
     expenseCount: Number,
     currencies: Array,
-    baseCurrency: String,
     themes: Object,
     theme: String,
   },
-  emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme', 'change-base-currency'],
-  data: function() {
-    return {
-      showOtherCurrencies: false,
-    };
-  },
-  computed: {
-    commonCurrencies: function() {
-      return this.currencies.filter(function(c) { return isCommonCurrency(c.code); });
-    },
-    otherCurrencies: function() {
-      return this.currencies.filter(function(c) { return !isCommonCurrency(c.code); });
-    },
-  },
+  emits: ['export', 'import', 'share', 'clear', 'delete-trip', 'switch-trip', 'change-theme'],
 };

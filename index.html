@@ -204,6 +204,18 @@
     font-weight: 700;
     margin-top: 4px;
   }
+  .summary-card .foreign-summary {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 14px;
+  }
+  .summary-card .foreign-item {
+    font-size: 13px;
+    opacity: 0.85;
+    white-space: nowrap;
+  }
 
   /* ===== Empty State ===== */
   .empty-state {
@@ -271,9 +283,12 @@
   .list-item .body .desc { font-size: 13px; color: #555; margin-top: 4px; white-space: pre-line; }
   .list-item .right { text-align: right; flex-shrink: 0; }
   .list-item .right .amount {
-    font-weight: 600; font-size: 15px; color: var(--color-primary);
+    font-weight: 700; font-size: 18px; color: #222;
   }
-  .list-item .right .meta { font-size: 11px; color: #bbb; margin-top: 2px; }
+  .list-item .right .amount.foreign {
+    color: #e67e22;
+  }
+  .list-item .right .meta { font-size: 12px; color: #888; margin-top: 2px; }
   .list-item .delete-btn {
     width: 28px; height: 28px;
     display: flex; align-items: center; justify-content: center;
@@ -736,7 +751,6 @@
         :entry-count="entries.length"
         :expense-count="expenses.length"
         :currencies="currencies"
-        :base-currency="baseCurrency"
         :themes="themes"
         :theme="activeTheme"
         @export="exportData"
@@ -745,8 +759,7 @@
         @clear="confirmClear"
         @delete-trip="deleteTrip($event)"
         @switch-trip="activeTripId = $event"
-        @change-theme="onThemeChange($event)"
-        @change-base-currency="baseCurrency = $event">
+        @change-theme="onThemeChange($event)">
       </settings-view>
     </div>
   </div>
@@ -872,7 +885,7 @@
           </div>
         </div>
         <div class="form-group" v-if="filteredPeople.length > 0">
-          <label>经手人（谁付的）</label>
+          <label>经手人 <span style="font-weight:400;color:#999;font-size:12px;">（谁付的钱）</span></label>
           <div class="chip-group">
             <button class="chip" v-for="p in filteredPeople" :key="p.id"
               :class="{ active: expenseForm.personId === p.id }"
@@ -888,7 +901,7 @@
           </div>
         </div>
         <div class="form-group" v-if="filteredPeople.length > 0">
-          <label>受益人 <span style="font-weight:400;color:#999;font-size:12px;">（选填，不选表示个人支出）</span></label>
+          <label>受益人 <span style="font-weight:400;color:#999;font-size:12px;">（留空=个人消费；共同消费请勾选自己+同行人）</span></label>
           <div class="chip-group">
             <button class="chip" v-for="p in filteredPeople" :key="p.id"
               :class="{ active: expenseForm.beneficiaryIds.includes(p.id) }"
@@ -1004,8 +1017,12 @@
 <div>
   <div class="summary-card">
     <div class="label">总支出</div>
-    <div class="amount">{{ totalStr }}</div>
+    <div class="amount">{{ baseSymbol }}{{ baseTotal.toFixed(2) }}</div>
+    <div class="foreign-summary" v-if="foreignTotals.length > 0">
+      <span v-for="ft in foreignTotals" :key="ft.code" class="foreign-item">+ {{ ft.code }} {{ ft.total.toFixed(2) }}</span>
+    </div>
   </div>
+  <button v-if="expenses.length > 0" class="btn btn-primary btn-block mb-12" @click="$emit('add')">记一笔</button>
   <div class="card" style="padding:10px 14px;margin-bottom:12px;" v-if="people.length > 1">
     <div class="chip-group">
       <button class="chip" :class="{ active: filterPersonId === '__all__' }"
@@ -1028,18 +1045,17 @@
         {{ getPersonName(item.personId).charAt(0) }}
       </div>
       <div class="body" style="cursor:pointer;" @click="$emit('edit', item)">
-        <div class="title">{{ getCategoryLabel(item.category) }} · {{ getPaymentLabel(item.paymentMethod) }}</div>
+        <div class="title">{{ getCategoryIcon(item.category) }} {{ getCategoryLabel(item.category) }} · {{ getPaymentLabel(item.paymentMethod) }}</div>
         <div class="sub">{{ item.date }} · 付款：{{ item.personName }}<span v-if="getBeneficiaryText(item)"> · 分摊：{{ getBeneficiaryText(item) }}</span></div>
         <div class="desc" v-if="item.note">{{ item.note }}</div>
       </div>
       <div class="right">
-        <div class="amount">{{ getCurrencySymbol(item.currency) }}{{ item.amount.toFixed(2) }}</div>
+        <div class="amount" :class="{ foreign: item.currency !== baseCurrency }">{{ getCurrencySymbol(item.currency) }}{{ item.amount.toFixed(2) }}</div>
         <div class="meta">{{ item.currency }}<span v-if="getBaseConversion(item)"> · {{ getBaseConversion(item) }}</span></div>
         <button class="delete-btn" @click="$emit('delete', item)">✕</button>
       </div>
     </div>
   </div>
-  <button v-if="expenses.length > 0" class="btn btn-primary btn-block mt-16" @click="$emit('add')">记一笔</button>
 </div>
 </script>
 
@@ -1203,30 +1219,6 @@
       消费：{{ expenseCount }} 笔
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">💰 本位币</div>
-    <div class="desc" style="font-size:13px;color:#888;margin-bottom:12px;">
-      所有支出统一换算成本位币进行统计
-    </div>
-    <div class="chip-group">
-      <button class="chip" v-for="c in commonCurrencies" :key="c.code"
-        :class="{ active: baseCurrency === c.code }"
-        @click="$emit('change-base-currency', c.code)">
-        {{ c.symbol }} {{ c.code }}
-      </button>
-      <button class="chip" :class="{ active: showOtherCurrencies }"
-        @click="showOtherCurrencies = !showOtherCurrencies">
-        {{ showOtherCurrencies ? '▲' : '▼' }} 其他
-      </button>
-    </div>
-    <div class="chip-group" style="margin-top:8px;" v-if="showOtherCurrencies">
-      <button class="chip" v-for="c in otherCurrencies" :key="c.code"
-        :class="{ active: baseCurrency === c.code }"
-        @click="$emit('change-base-currency', c.code); showOtherCurrencies = false">
-        {{ c.symbol }} {{ c.code }}
-      </button>
-    </div>
-  </div>
   <div class="card" v-if="trips.length > 0">
     <div class="card-title">🗺️ 管理旅行</div>
     <div class="list-item" v-for="t in trips" :key="t.id" style="padding:10px 0;">
@@ -1289,7 +1281,7 @@
   <div class="card">
     <div class="card-title">ℹ️ 关于</div>
     <div style="font-size:13px;color:#666;">
-      旅行手账 v1.0.4<br>
+      旅行手账 v1.0.5<br>
       纯离线 · 数据仅存储在本地浏览器<br>
       支持 PWA 添加到桌面
     </div>
