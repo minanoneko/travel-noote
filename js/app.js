@@ -37,7 +37,7 @@ var app = Vue.createApp({
 
       baseCurrency: 'CNY',
 
-      exchangeRates: {},  // 记忆已设置的汇率 { JPY: 0.05, USD: 7.2 }
+      exchangeRates: saved.exchangeRates,  // 记忆已设置的汇率 { JPY: 0.05, USD: 7.2 }
 
       activeTheme: loadTheme(),
       themes: THEMES,
@@ -451,7 +451,7 @@ var app = Vue.createApp({
       var tripExpenses = self.expenses.filter(function(e) { return e.tripId === self.activeTripId && e.currency === currencyCode; });
       tripExpenses.forEach(function(e) {
         e.exchangeRate = rate;
-        e.baseAmount = e.amount * rate;
+        e.baseAmount = (parseFloat(e.amount) || 0) * rate;
       });
       if (tripExpenses.length === 0) {
         self.showToast('汇率已保存，新增' + currencyCode + '支出时将自动换算');

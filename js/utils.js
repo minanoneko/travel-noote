@@ -109,7 +109,6 @@ function loadData() {
         exchangeRates: data.exchangeRates || {},
       };
 
-[Note: At least 1 of 3 matches were truncated from the original results due to output limits]
     }
   } catch (e) {
     console.error('Load data error:', e);
