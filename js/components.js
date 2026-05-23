@@ -81,7 +81,9 @@ var ExpensesView = {
         if (!map[code]) map[code] = { code: code, symbol: getCurrencyByCode(code).symbol, total: 0 };
         map[code].total += parseFloat(e.amount) || 0;
       });
-      return Object.values(map).sort(function(a, b) { return b.total - a.total; });
+      var result = [];
+      for (var k in map) { if (map.hasOwnProperty(k)) result.push(map[k]); }
+      return result.sort(function(a, b) { return b.total - a.total; });
     },
     sortedExpenses: function() {
       var self = this;
@@ -120,7 +122,7 @@ var ExpensesView = {
       var baseAmount = expense.baseAmount != null ? expense.baseAmount : null;
       if (baseAmount == null || expense.currency === this.baseCurrency) return '';
       var sym = getCurrencyByCode(this.baseCurrency).symbol;
-      return sym + baseAmount.toFixed(2);
+      return sym + (parseFloat(baseAmount) || 0).toFixed(2);
     }
   }
 };
@@ -232,7 +234,9 @@ var StatsView = {
         var amt = get(e);
         if (amt != null) map[key].total += amt;
       });
-      var arr = Object.values(map).filter(function(x) { return x.total > 0; });
+      var arr = [];
+      for (var k in map) { if (map.hasOwnProperty(k)) arr.push(map[k]); }
+      arr = arr.filter(function(x) { return x.total > 0; });
       var total = this.displayTotal;
       arr.forEach(function(item) {
         item.percent = total > 0 ? ((item.total / total) * 100).toFixed(1) : 0;
@@ -254,7 +258,9 @@ var StatsView = {
         if (amt != null) map[e.personId].total += amt;
         map[e.personId].count++;
       });
-      return Object.values(map).filter(function(x) { return x.count > 0; }).sort(function(a, b) { return b.total - a.total; });
+      var result = [];
+      for (var k in map) { if (map.hasOwnProperty(k)) result.push(map[k]); }
+      return result.filter(function(x) { return x.count > 0; }).sort(function(a, b) { return b.total - a.total; });
     },
     chartColors: function() {
       var palette = ['#2D6A4F','#40916C','#E76F51','#E9C46A','#287271','#8A5A44','#6B705C','#CB997E','#B5838D'];
@@ -290,10 +296,12 @@ var StatsView = {
           }
         });
       });
-      Object.values(balances).forEach(function(b) {
+      var balArr = [];
+      for (var bk in balances) { if (balances.hasOwnProperty(bk)) balArr.push(balances[bk]); }
+      balArr.forEach(function(b) {
         b.net = b.totalPaid - b.totalShouldered;
       });
-      return Object.values(balances).filter(function(b) { return Math.abs(b.net) >= 0.01; });
+      return balArr.filter(function(b) { return Math.abs(b.net) >= 0.01; });
     },
     settlementPlan: function() {
       var balances = this.settlementBalances.map(function(b) { return Object.assign({}, b); });
