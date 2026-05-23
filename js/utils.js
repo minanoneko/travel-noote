@@ -106,12 +106,15 @@ function loadData() {
         entries: data.entries || [],
         people: data.people || [],
         expenses: data.expenses || [],
+        exchangeRates: data.exchangeRates || {},
       };
+
+[Note: At least 1 of 3 matches were truncated from the original results due to output limits]
     }
   } catch (e) {
     console.error('Load data error:', e);
   }
-  return { trips: [], activeTripId: null, entries: [], people: [], expenses: [] };
+  return { trips: [], activeTripId: null, entries: [], people: [], expenses: [], exchangeRates: {} };
 }
 
 function saveData(state) {
@@ -123,6 +126,7 @@ function saveData(state) {
       entries: raw(state.entries),
       people: raw(state.people),
       expenses: raw(state.expenses),
+      exchangeRates: state.exchangeRates,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {

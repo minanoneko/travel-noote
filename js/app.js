@@ -37,6 +37,8 @@ var app = Vue.createApp({
 
       baseCurrency: 'CNY',
 
+      exchangeRates: {},  // 记忆已设置的汇率 { JPY: 0.05, USD: 7.2 }
+
       activeTheme: loadTheme(),
       themes: THEMES,
 
@@ -85,6 +87,7 @@ var app = Vue.createApp({
     entries: { deep: true, handler: 'persist' },
     people: { deep: true, handler: 'persist' },
     expenses: { deep: true, handler: 'persist' },
+    exchangeRates: { deep: true, handler: 'persist' },
     showTripForm: 'updateScrollLock',
     showEntryForm: 'updateScrollLock',
     showExpenseForm: 'updateScrollLock',
@@ -99,6 +102,7 @@ var app = Vue.createApp({
         entries: this.entries,
         people: this.people,
         expenses: this.expenses,
+        exchangeRates: this.exchangeRates,
       });
     },
     updateScrollLock: function() {
@@ -355,6 +359,8 @@ var app = Vue.createApp({
       var personName = person ? person.name : '未知';
 
       if (this.editingExpense) {
+        var currencyChanged = this.expenseForm.currency !== this.editingExpense.currency;
+        var editRate = currencyChanged ? (self.exchangeRates[this.expenseForm.currency] || void 0) : this.editingExpense.exchangeRate;
         Object.assign(this.editingExpense, {
           amount: amount,
           currency: this.expenseForm.currency,
@@ -365,12 +371,13 @@ var app = Vue.createApp({
           beneficiaryIds: [].concat(this.expenseForm.beneficiaryIds),
           date: this.expenseForm.date,
           note: this.expenseForm.note,
-          exchangeRate: this.editingExpense.exchangeRate,
-          baseAmount: this.editingExpense.exchangeRate != null ? amount * this.editingExpense.exchangeRate : void 0,
+          exchangeRate: editRate,
+          baseAmount: editRate != null ? amount * editRate : void 0,
           splitMode: this.expenseForm.splitMode,
           shares: this.expenseForm.splitMode === 'custom' ? Object.assign({}, this.expenseForm.shares) : {},
         });
       } else {
+        var storedRate = self.exchangeRates[this.expenseForm.currency];
         this.expenses.push({
           id: genId(),
           tripId: this.activeTripId,
@@ -386,6 +393,8 @@ var app = Vue.createApp({
           createdAt: new Date().toISOString(),
           splitMode: this.expenseForm.splitMode,
           shares: this.expenseForm.splitMode === 'custom' ? Object.assign({}, this.expenseForm.shares) : {},
+          exchangeRate: storedRate || void 0,
+          baseAmount: storedRate != null ? amount * storedRate : void 0,
         });
       }
       this.closeExpenseForm();
@@ -438,16 +447,17 @@ var app = Vue.createApp({
     // ===== Exchange Rate Batch Set =====
     setCurrencyRate: function(currencyCode, rate) {
       var self = this;
+      self.exchangeRates[currencyCode] = rate;
       var tripExpenses = self.expenses.filter(function(e) { return e.tripId === self.activeTripId && e.currency === currencyCode; });
-      if (tripExpenses.length === 0) {
-        self.showToast('没有该币种的支出');
-        return;
-      }
       tripExpenses.forEach(function(e) {
         e.exchangeRate = rate;
         e.baseAmount = e.amount * rate;
       });
-      self.showToast('已应用汇率');
+      if (tripExpenses.length === 0) {
+        self.showToast('汇率已保存，新增' + currencyCode + '支出时将自动换算');
+      } else {
+        self.showToast('已应用汇率（' + tripExpenses.length + '笔）');
+      }
     },
 
     // ===== Theme =====

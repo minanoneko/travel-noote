@@ -146,13 +146,14 @@ var StatsView = {
     currencies: Array,
     categories: Array,
     baseCurrency: String,
+    exchangeRates: Object,
   },
   emits: ['set-currency-rate'],
   data: function() {
     return {
       chartInstance: null,
       selectedPersonId: '__all__',
-      rateInputs: {},
+      rateInputs: Object.assign({}, this.exchangeRates),
     };
   },
   computed: {
