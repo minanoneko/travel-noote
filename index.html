@@ -256,6 +256,13 @@
   .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
   .btn-block { width: 100%; }
   .btn-ghost { color: #666; padding: 6px 10px; }
+  .sticky-add-btn {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 0 0 12px 0;
+    background: #f5f7f6;
+  }
 
   /* ===== List Items ===== */
   .list-item {
@@ -1024,7 +1031,9 @@
       <span v-for="ft in foreignTotals" :key="ft.code" class="foreign-item">+ {{ ft.code }} {{ ft.total.toFixed(2) }}</span>
     </div>
   </div>
-  <button v-if="expenses.length > 0" class="btn btn-primary btn-block mb-12" @click="$emit('add')">记一笔</button>
+  <div class="sticky-add-btn">
+    <button v-if="expenses.length > 0" class="btn btn-primary btn-block" @click="$emit('add')">记一笔</button>
+  </div>
   <div class="card" style="padding:10px 14px;margin-bottom:12px;" v-if="people.length > 1">
     <div class="chip-group">
       <button class="chip" :class="{ active: filterPersonId === '__all__' }"
@@ -1299,8 +1308,8 @@
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
 <!-- ====== Main App ====== -->
-<script src="js/utils.js?v=106"></script>
-<script src="js/components.js?v=106"></script>
-<script src="js/app.js?v=106"></script>
+<script src="js/utils.js?v=107"></script>
+<script src="js/components.js?v=107"></script>
+<script src="js/app.js?v=107"></script>
 </body>
 </html>
